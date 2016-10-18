@@ -1,2 +1,3 @@
 TestHello.hpp
 Simulations/TestRunningTumourSpheroidSimulationsTutorialEdited.hpp
+Simulations/TestNodeBasedTumourSpheroid.hpp
