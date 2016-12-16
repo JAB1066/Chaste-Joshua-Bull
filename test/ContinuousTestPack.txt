@@ -1,3 +1,5 @@
 TestHello.hpp
 Simulations/TestRunningTumourSpheroidSimulationsTutorialEdited.hpp
 Simulations/TestNodeBasedTumourSpheroid.hpp
+Simulations/TestSpheroidAddingMacrophages.hpp
+Simulations/TestTumourSpheroidOtherModellingMethodologies.hpp
