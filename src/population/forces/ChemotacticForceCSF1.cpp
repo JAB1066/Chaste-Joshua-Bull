@@ -60,7 +60,7 @@ template<unsigned DIM>
 double ChemotacticForceCSF1<DIM>::GetChemotacticForceMagnitude(const double concentration, const double concentrationGradientMagnitude)
 {
 
-    return sensitivity*concentration; // temporary force law - can be changed to something realistic
+    return sensitivity; // temporary force law - can be changed to something realistic
                           	  	  	  // without tests failing
 }
 
@@ -130,12 +130,12 @@ void ChemotacticForceCSF1<DIM>::AddForceContribution(AbstractCellPopulation<DIM>
         	double magnitude_of_gradient = norm_2(gradient);
         	double nutrient_concentration = cell_iter->GetCellData()->GetItem("csf1");
 
-        	// At the moment, magnitude of Chemotactic force is just the concentration of the nutrient
+        	// At the moment, magnitude of Chemotactic force is just the sensitivity
             double force_magnitude = GetChemotacticForceMagnitude(nutrient_concentration, magnitude_of_gradient);
             // force += chi * gradC/|gradC|
             if (magnitude_of_gradient > 0)
             {
-                c_vector<double,DIM> force = (force_magnitude/magnitude_of_gradient)*gradient;
+                c_vector<double,DIM> force = force_magnitude*gradient;//(force_magnitude/magnitude_of_gradient)*gradient;
                 rCellPopulation.GetNode(node_global_index)->AddAppliedForceContribution(force);
             }
             // else Fc=0

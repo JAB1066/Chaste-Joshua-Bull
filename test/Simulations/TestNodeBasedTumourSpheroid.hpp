@@ -65,7 +65,7 @@ class TestNodeBasedTumourSpheroid : public AbstractCellBasedTestSuite
 {
 public:
 
-	void dontTestSpheroid() throw(Exception)
+	void TestSpheroid() throw(Exception)
 	{
 		/** The next line is needed because we cannot currently run node based simulations in parallel. */
 		EXIT_IF_PARALLEL;
@@ -95,7 +95,7 @@ public:
 		/* We then pass in the cell population into an {{{OffLatticeSimulation}}},
 		 * (this time with dimension 3) and set the output directory, output multiple and end time. */
 		OffLatticeSimulation<3> simulator(cell_population);
-		simulator.SetOutputDirectory("TumourSpheroidSimulations/OffLattice3DTumourSpheroid");
+		simulator.SetOutputDirectory("Temp");//"TumourSpheroidSimulations/OffLattice3DTumourSpheroid");
 		simulator.SetSamplingTimestepMultiple(12);
 		simulator.SetEndTime(60.0);
 
