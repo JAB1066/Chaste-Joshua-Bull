@@ -149,7 +149,7 @@ void SetupSingletons()
 
 	// Reseed with 0 for same random numbers each time, or time(NULL) or simulation_id to change each realisation
 	int seed = time(NULL);
-	RandomNumberGenerator::Instance()->Reseed(time(NULL));//1485955195
+	RandomNumberGenerator::Instance()->Reseed(seed);//1485955195
 	CellPropertyRegistry::Instance()->Clear();
 	CellId::ResetMaxCellId();
 }
@@ -185,18 +185,33 @@ void SetupAndRunSimulation(std::string id_string, double diffusionCoefficient, d
 	 * dampingConstant: constant nu on LHS of nu*dx/dt = Forces
 	 *
 	 */
+	const int dimensions = 3;
 
 	// Generate Mesh:
 	// Make Vector
-	std::vector<Node<2>*> nodes;
+	std::vector<Node<dimensions>*> nodes;
 
 	// Add macrophage node at origin
 	unsigned nodeNum=0;
 
 	// Add macrophage node
-	nodes.push_back(new Node<2>(nodeNum, false, 0, 0));
+	switch(dimensions)
+	{
+	case 1:
+		nodes.push_back(new Node<dimensions>(nodeNum, false, 0));
+		break;
 
-	NodesOnlyMesh<2> mesh;
+	case 2:
+		nodes.push_back(new Node<dimensions>(nodeNum, false, 0, 0));
+		break;
+
+	case 3:
+		nodes.push_back(new Node<dimensions>(nodeNum, false, 0, 0, 0));
+		break;
+	}
+
+
+	NodesOnlyMesh<dimensions> mesh;
 	// Cut off length: 1.5 cell radii
 	mesh.ConstructNodesWithoutMesh(nodes, 1.5);
 
@@ -208,7 +223,7 @@ void SetupAndRunSimulation(std::string id_string, double diffusionCoefficient, d
 
 	// Make Macrophage
 	NoCellCycleModel* p_model = new NoCellCycleModel;
-	p_model->SetDimension(2);
+	p_model->SetDimension(dimensions);
 
 	CellPtr p_cell(new Cell(p_state, p_model));
 	p_cell->SetCellProliferativeType(p_macrophage_type);
@@ -217,7 +232,7 @@ void SetupAndRunSimulation(std::string id_string, double diffusionCoefficient, d
 	cells.push_back(p_cell);
 
 	// Make cell population (2D)
-	NodeBasedCellPopulation<2> cell_population(mesh, cells);
+	NodeBasedCellPopulation<dimensions> cell_population(mesh, cells);
 	//cell_population.AddPopulationWriter<NodeLocationWriter>();
 	//cell_population.AddPopulationWriter<VoronoiDataWriter>(); // Write VTU files
 
@@ -227,22 +242,22 @@ void SetupAndRunSimulation(std::string id_string, double diffusionCoefficient, d
 
 	/* We then pass in the cell population into an {{{OffLatticeSimulation}}},
 	 * (this time with dimension 2) and set the output directory, output multiple and end time. */
-	OffLatticeSimulation<2> simulator(cell_population);
+	OffLatticeSimulation<dimensions> simulator(cell_population);
 
 	// Create and set an output directory that is different for each simulation
 	std::stringstream output_directory;
-	output_directory << "AddingMacrophages/DiffusionImplementationTesting/SingleMacrophage_DistanceInSetTime_WienerRule/" << id_string;
+	output_directory << "AddingMacrophages/DiffusionImplementationTesting/SingleMacrophage_DistanceInSetTime/" << id_string;
 	simulator.SetOutputDirectory(output_directory.str());
 	simulator.SetSamplingTimestepMultiple(12);
 	simulator.SetEndTime(simulationDuration);
 
 
 
-	//MAKE_PTR(DiffusionForceFixedSigmaRandomUnitDirection<2>, p_diffusion_force);
+	//MAKE_PTR(DiffusionForceFixedSigmaRandomUnitDirection<dimensions>, p_diffusion_force);
 	//p_diffusion_force->SetScalingConstant(diffusionCoefficient);
 	//simulator.AddForce(p_diffusion_force);
 
-	MAKE_PTR(DiffusionForceChooseD<2>, p_diffusion_force);
+	MAKE_PTR(DiffusionForceChooseD<dimensions>, p_diffusion_force);
 	p_diffusion_force->SetDiffusionScalingConstant(diffusionCoefficient);
 	simulator.AddForce(p_diffusion_force);
 
@@ -255,22 +270,55 @@ void SetupAndRunSimulation(std::string id_string, double diffusionCoefficient, d
 		OutputFileHandler results_handler(output_directory.str(), false);
 		out_stream results_file = results_handler.OpenOutputFile("results.completiontimeandlocation");
 
-		Node<2>* p_MacNode = cell_population.GetNode(nodeNum);
-		const c_vector<double, 2>& r_MacNode_location = p_MacNode->rGetLocation();
+		Node<dimensions>* p_MacNode = cell_population.GetNode(nodeNum);
+		const c_vector<double, dimensions>& r_MacNode_location = p_MacNode->rGetLocation();
+
+
 
 		// Output summary statistics to results file
 		(*results_file) << "ID" << ","
-						<< "Simulation error" << ","
-						<< "Macrophage x coordinate at end" << ","
-						<< "Macrophage y coordinate at end" << ","
-						<< "Total Macrophage displacement" << ","
+						<< "Simulation error" << ",";
+						switch(dimensions)
+						{
+							case(1):
+								(*results_file) << "Macrophage x coordinate at end" << ",";
+								break;
+							case(2):
+								(*results_file) << "Macrophage x coordinate at end" << ","
+												<< "Macrophage y coordinate at end" << ",";
+								break;
+							case(3):
+								(*results_file) << "Macrophage x coordinate at end" << ","
+												<< "Macrophage y coordinate at end" << ","
+												<< "Macrophage z coordinate at end" << ",";
+								break;
+						}
+		(*results_file) << "Total Macrophage displacement" << ","
 						<< "Simulation time at end" << std::endl;
 
+		double displacement;
+
 		(*results_file) << id_string << ","
-						<< "0" << ","
-						<< boost::lexical_cast<std::string>(r_MacNode_location[0]) << ","
-						<< boost::lexical_cast<std::string>(r_MacNode_location[1]) << ","
-						<< boost::lexical_cast<std::string>(sqrt(r_MacNode_location[0]*r_MacNode_location[0] + r_MacNode_location[1]*r_MacNode_location[1])) << ","
+						<< "0" << ",";
+						switch(dimensions)
+						{
+							case(1):
+								(*results_file) << boost::lexical_cast<std::string>(r_MacNode_location[0]) << ",";
+								displacement = sqrt(r_MacNode_location[0]*r_MacNode_location[0]);
+								break;
+							case(2):
+								(*results_file) << boost::lexical_cast<std::string>(r_MacNode_location[0]) << ","
+												<< boost::lexical_cast<std::string>(r_MacNode_location[1]) << ",";
+								displacement = sqrt(r_MacNode_location[0]*r_MacNode_location[0] + r_MacNode_location[1]*r_MacNode_location[1]);
+								break;
+							case(3):
+								(*results_file) << boost::lexical_cast<std::string>(r_MacNode_location[0]) << ","
+												<< boost::lexical_cast<std::string>(r_MacNode_location[1]) << ","
+												<< boost::lexical_cast<std::string>(r_MacNode_location[2]) << ",";
+								displacement = sqrt(r_MacNode_location[0]*r_MacNode_location[0] + r_MacNode_location[1]*r_MacNode_location[1] + r_MacNode_location[2]*r_MacNode_location[2]);
+								break;
+						}
+		(*results_file) << boost::lexical_cast<std::string>(displacement) << ","
 						<< boost::lexical_cast<std::string>(SimulationTime::Instance()->GetTime());
 		// Tidy up
 		results_file->close();
@@ -281,22 +329,53 @@ void SetupAndRunSimulation(std::string id_string, double diffusionCoefficient, d
 		OutputFileHandler results_handler(output_directory.str(), false);
 		out_stream results_file = results_handler.OpenOutputFile("results.completiontimeandlocation");
 
-		Node<2>* p_MacNode = cell_population.GetNode(nodeNum);
-		const c_vector<double, 2>& r_MacNode_location = p_MacNode->rGetLocation();
+		Node<dimensions>* p_MacNode = cell_population.GetNode(nodeNum);
+		const c_vector<double, dimensions>& r_MacNode_location = p_MacNode->rGetLocation();
 
 		// Output summary statistics to results file
 		(*results_file) << "ID" << ","
-						<< "Simulation error" << ","
-						<< "Macrophage x coordinate at end" << ","
-						<< "Macrophage y coordinate at end" << ","
-						<< "Total Macrophage displacement" << ","
-						<< "Simulation time at end" << std::endl;
+						<< "Simulation error" << ",";
+						switch(dimensions)
+						{
+							case(1):
+								(*results_file) << "Macrophage x coordinate at end" << ",";
+								break;
+							case(2):
+								(*results_file) << "Macrophage x coordinate at end" << ","
+												<< "Macrophage y coordinate at end" << ",";
+								break;
+							case(3):
+								(*results_file) << "Macrophage x coordinate at end" << ","
+												<< "Macrophage y coordinate at end" << ","
+												<< "Macrophage z coordinate at end" << ",";
+								break;
+						}
+						(*results_file) << "Total Macrophage displacement" << ","
+										<< "Simulation time at end" << std::endl;
+
+		double displacement;
 
 		(*results_file) << id_string << ","
-						<< "1" << ","
-						<< boost::lexical_cast<std::string>(r_MacNode_location[0]) << ","
-						<< boost::lexical_cast<std::string>(r_MacNode_location[1]) << ","
-						<< boost::lexical_cast<std::string>(sqrt(r_MacNode_location[0]*r_MacNode_location[0] + r_MacNode_location[1]*r_MacNode_location[1])) << ","
+						<< "1" << ",";
+						switch(dimensions)
+						{
+							case(1):
+								(*results_file) << boost::lexical_cast<std::string>(r_MacNode_location[0]) << ",";
+								displacement = sqrt(r_MacNode_location[0]*r_MacNode_location[0]);
+								break;
+							case(2):
+								(*results_file) << boost::lexical_cast<std::string>(r_MacNode_location[0]) << ","
+												<< boost::lexical_cast<std::string>(r_MacNode_location[1]) << ",";
+								displacement = sqrt(r_MacNode_location[0]*r_MacNode_location[0] + r_MacNode_location[1]*r_MacNode_location[1]);
+								break;
+							case(3):
+								(*results_file) << boost::lexical_cast<std::string>(r_MacNode_location[0]) << ","
+												<< boost::lexical_cast<std::string>(r_MacNode_location[1]) << ","
+												<< boost::lexical_cast<std::string>(r_MacNode_location[2]) << ",";
+								displacement = sqrt(r_MacNode_location[0]*r_MacNode_location[0] + r_MacNode_location[1]*r_MacNode_location[1] + r_MacNode_location[2]*r_MacNode_location[2]);
+								break;
+						}
+		(*results_file) << boost::lexical_cast<std::string>(displacement) << ","
 						<< boost::lexical_cast<std::string>(SimulationTime::Instance()->GetTime());
 		// Tidy up
 		results_file->close();
@@ -307,22 +386,53 @@ void SetupAndRunSimulation(std::string id_string, double diffusionCoefficient, d
 			OutputFileHandler results_handler(output_directory.str(), false);
 			out_stream results_file = results_handler.OpenOutputFile("results.completiontimeandlocation");
 
-			Node<2>* p_MacNode = cell_population.GetNode(nodeNum);
-			const c_vector<double, 2>& r_MacNode_location = p_MacNode->rGetLocation();
+			Node<dimensions>* p_MacNode = cell_population.GetNode(nodeNum);
+			const c_vector<double, dimensions>& r_MacNode_location = p_MacNode->rGetLocation();
 
 			// Output summary statistics to results file
 			(*results_file) << "ID" << ","
-							<< "Simulation error" << ","
-							<< "Macrophage x coordinate at end" << ","
-							<< "Macrophage y coordinate at end" << ","
-							<< "Total Macrophage displacement" << ","
+							<< "Simulation error" << ",";
+							switch(dimensions)
+							{
+								case(1):
+									(*results_file) << "Macrophage x coordinate at end" << ",";
+									break;
+								case(2):
+									(*results_file) << "Macrophage x coordinate at end" << ","
+													<< "Macrophage y coordinate at end" << ",";
+									break;
+								case(3):
+									(*results_file) << "Macrophage x coordinate at end" << ","
+													<< "Macrophage y coordinate at end" << ","
+													<< "Macrophage z coordinate at end" << ",";
+									break;
+							}
+			(*results_file) << "Total Macrophage displacement" << ","
 							<< "Simulation time at end" << std::endl;
 
+			double displacement;
+
 			(*results_file) << id_string << ","
-							<< "1" << ","
-							<< boost::lexical_cast<std::string>(r_MacNode_location[0]) << ","
-							<< boost::lexical_cast<std::string>(r_MacNode_location[1]) << ","
-							<< boost::lexical_cast<std::string>(sqrt(r_MacNode_location[0]*r_MacNode_location[0] + r_MacNode_location[1]*r_MacNode_location[1])) << ","
+							<< "1" << ",";
+							switch(dimensions)
+							{
+								case(1):
+									(*results_file) << boost::lexical_cast<std::string>(r_MacNode_location[0]) << ",";
+									displacement = sqrt(r_MacNode_location[0]*r_MacNode_location[0]);
+									break;
+								case(2):
+									(*results_file) << boost::lexical_cast<std::string>(r_MacNode_location[0]) << ","
+													<< boost::lexical_cast<std::string>(r_MacNode_location[1]) << ",";
+									displacement = sqrt(r_MacNode_location[0]*r_MacNode_location[0] + r_MacNode_location[1]*r_MacNode_location[1]);
+									break;
+								case(3):
+									(*results_file) << boost::lexical_cast<std::string>(r_MacNode_location[0]) << ","
+													<< boost::lexical_cast<std::string>(r_MacNode_location[1]) << ","
+													<< boost::lexical_cast<std::string>(r_MacNode_location[2]) << ",";
+									displacement = sqrt(r_MacNode_location[0]*r_MacNode_location[0] + r_MacNode_location[1]*r_MacNode_location[1] + r_MacNode_location[2]*r_MacNode_location[2]);
+									break;
+							}
+			(*results_file) << boost::lexical_cast<std::string>(displacement) << ","
 							<< boost::lexical_cast<std::string>(SimulationTime::Instance()->GetTime());
 			// Tidy up
 			results_file->close();

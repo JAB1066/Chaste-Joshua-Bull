@@ -22,8 +22,8 @@ today = time.strftime('%Y-%m-%dT%H%M')
 # Param ranges (in lists, for itertools product)
 ld = np.linspace(5, 50, num=10)
 cs = np.linspace(0.5, 5.0, num=10)
-tk = np.linspace(0.0, 2.0, num=21)
-itN = np.linspace(0, 0, num=20)
+tk = np.linspace(0.0, 0.0, num=1)
+itN = np.linspace(0, 0, num=1)
 
 combined_iterable = enumerate(itertools.product(ld,cs,tk,itN))
 
@@ -41,7 +41,7 @@ def run_simulations():
     if not os.path.exists(path_to_output):
     	os.makedirs(path_to_output)
     
-    params_file = open(path_to_output + '/params_file.csv', 'w')
+    params_file = open(path_to_output + '/params_file_new.csv', 'w')
     params_file.write(','.join(params_list) + '\n')
 
     base_command = 'nice -n 19 ' + executable

@@ -97,6 +97,7 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "CellProliferativePhasesWriter.hpp"
 #include "CellProliferativeTypesWriter.hpp"
 #include "CellMutationStatesWriter.hpp"
+#include "CellDataItemWriter.hpp"
 
 #include "DifferentialAdhesionGeneralisedLinearSpringForceWithMacrophages.hpp"
 #include "MacrophageProximityLabellingModifier.hpp"
@@ -113,7 +114,13 @@ void DestroySingletons();
 void SetupAndRunSimulation(std::string id_string, double lengthOfDomain, double chemotaxisSensitivity, double temperatureKelvin, double iterationNumber);
 void OutputToConsole(std::string id_string, std::string leading);
 double bc_func(const ChastePoint<2>& p);
+double bc_func2(const ChastePoint<1>& p);
 double bc_func2(const ChastePoint<2>& p);
+double bc_func2(const ChastePoint<3>& p);
+double bc_func3(const ChastePoint<2>& p);
+double bc_func4(const ChastePoint<2>& p);
+double bc_func5(const ChastePoint<2>& p);
+double bc_func6(const ChastePoint<2>& p);
 
 int main(int argc, char *argv[])
 {
@@ -193,12 +200,43 @@ void OutputToConsole(std::string id_string, std::string leading)
 
 double bc_func(const ChastePoint<2>& p)
 {
-	return p[1]; // Return y value on boundary
+	return p[1]; // Return y value on boundary - yLinearBCs
+}
+
+double bc_func2(const ChastePoint<1>& p)
+{
+	return 0.5*p[0]*p[0]; // Return y^2/2 value on boundary - ySquaredBCs
 }
 
 double bc_func2(const ChastePoint<2>& p)
 {
-	return p[1]*p[1]; // Return y^2 value on boundary
+	return 0.5*p[1]*p[1]; // Return y^2/2 value on boundary - ySquaredBCs
+}
+
+double bc_func2(const ChastePoint<3>& p)
+{
+	return 0.5*p[1]*p[1]; // Return y^2/2 value on boundary - ySquaredBCs
+}
+
+
+double bc_func3(const ChastePoint<2>& p)
+{
+	return 0.0001*p[1]*p[1]*p[1] + 0.001*p[1]*p[1] + 0.01*p[1]; // Return nonlinear eqn on boundary - yNonlinearBCs
+}
+
+double bc_func4(const ChastePoint<2>& p)
+{
+	return sin(p[1]) + 1.01*p[1]; // Return nonlinear eqn on boundary
+}
+
+double bc_func5(const ChastePoint<2>& p)
+{
+	return exp(0.1*p[1]); // Return nonlinear eqn on boundary - yExponentialBCs
+}
+
+double bc_func6(const ChastePoint<2>& p)
+{
+	return (p[1]*p[1]*p[1])/3; // Return y^3/3 value on boundary - yCubedBCs
 }
 
 void SetupAndRunSimulation(std::string id_string, double lengthOfDomain, double chemotaxisSensitivity, double temperatureKelvin, double iterationNumber)
@@ -214,18 +252,33 @@ void SetupAndRunSimulation(std::string id_string, double lengthOfDomain, double 
 	 *
 	 */
 
-
 	// Generate Mesh:
 	// Make Vector
-	std::vector<Node<2>*> nodes;
+	const int dimensions = 2;
+	std::vector<Node<dimensions>*> nodes;
 
 	// Add macrophage node at origin
 	unsigned nodeNum=0;
 
 	// Add macrophage node
-	nodes.push_back(new Node<2>(nodeNum, false, 0, 0.01));
+	double y_0 = 0.01;
+	switch(dimensions)
+	{
+	case 1:
+		nodes.push_back(new Node<dimensions>(nodeNum, false, y_0));
+		break;
 
-	NodesOnlyMesh<2> mesh;
+	case 2:
+		nodes.push_back(new Node<dimensions>(nodeNum, false, 0.49, y_0));
+		break;
+
+	case 3:
+		nodes.push_back(new Node<dimensions>(nodeNum, false, 0, y_0, 0));
+		break;
+	}
+
+
+	NodesOnlyMesh<dimensions> mesh;
 	// Cut off length: 1.5 cell radii
 	mesh.ConstructNodesWithoutMesh(nodes, 1.5);
 
@@ -237,7 +290,7 @@ void SetupAndRunSimulation(std::string id_string, double lengthOfDomain, double 
 
 	// Make Macrophage
 	NoCellCycleModel* p_model = new NoCellCycleModel;
-	p_model->SetDimension(2);
+	p_model->SetDimension(dimensions);
 
 	CellPtr p_cell(new Cell(p_state, p_model));
 	p_cell->SetCellProliferativeType(p_macrophage_type);
@@ -248,37 +301,61 @@ void SetupAndRunSimulation(std::string id_string, double lengthOfDomain, double 
 
 
 	// Make cell population (2D)
-	NodeBasedCellPopulation<2> cell_population(mesh, cells);
+	NodeBasedCellPopulation<dimensions> cell_population(mesh, cells);
 	cell_population.AddPopulationWriter<NodeLocationWriter>();
 	//cell_population.AddPopulationWriter<VoronoiDataWriter>(); // Write VTU files
 
 	// Create a ChasteCuboid on which to base the finite element mesh used to solve the PDE
-	double widthOfDomain = 10;
+	double widthOfDomain = 1;
 	// lengthOfDomain is a parameter
-	ChastePoint<2> lower(-widthOfDomain*0.5, 0);
-	ChastePoint<2> upper(widthOfDomain*0.5, lengthOfDomain);
-	MAKE_PTR_ARGS(ChasteCuboid<2>, p_cuboid, (lower, upper));
+
+	ChastePoint<dimensions> lower;
+	ChastePoint<dimensions> upper;
+	switch(dimensions)
+	{
+	case 1:
+		lower.SetCoordinate(0,0);
+		upper.SetCoordinate(0,lengthOfDomain);
+		break;
+
+	case 2:
+		lower.SetCoordinate(0,-widthOfDomain*0.5);
+		lower.SetCoordinate(1,0);
+		upper.SetCoordinate(0,widthOfDomain*0.5);
+		upper.SetCoordinate(1,lengthOfDomain);
+		break;
+
+	case 3:
+		lower.SetCoordinate(0,-widthOfDomain*0.5);
+		lower.SetCoordinate(1,0);
+		lower.SetCoordinate(2,-widthOfDomain*0.5);
+		upper.SetCoordinate(0,widthOfDomain*0.5);
+		upper.SetCoordinate(1,lengthOfDomain);
+		upper.SetCoordinate(2,widthOfDomain*0.5);
+		break;
+	}
+	MAKE_PTR_ARGS(ChasteCuboid<dimensions>, p_cuboid, (lower, upper));
 
 	// Make PDE
 	//UniformSourceEllipticPde<3> pde(0);
-	MAKE_PTR_ARGS(UniformSourceEllipticPde<2>, p_pde, (0.0));
-	MAKE_PTR_ARGS(FunctionalBoundaryCondition<2>, p_functional_bc, (&bc_func));
+	MAKE_PTR_ARGS(UniformSourceEllipticPde<dimensions>, p_pde, (0.0));
+	MAKE_PTR_ARGS(FunctionalBoundaryCondition<dimensions>, p_functional_bc, (&bc_func2));
 	//MAKE_PTR_ARGS(ConstBoundaryCondition<3>, p_bc, (1.0));
 	bool is_neumann_bc = false; // Dirichlet BCs
 
 	// Create a PDE modifier and set the name of the dependent variable in the PDE
-	MAKE_PTR_ARGS(EllipticBoxDomainPdeModifier<2>, p_pde_modifier, (p_pde, p_functional_bc, is_neumann_bc, p_cuboid, 1.0));
+	MAKE_PTR_ARGS(EllipticBoxDomainPdeModifier<dimensions>, p_pde_modifier, (p_pde, p_functional_bc, is_neumann_bc, p_cuboid, 1.0));
 	p_pde_modifier->SetDependentVariableName("csf1");
 	p_pde_modifier->SetOutputGradient(true);
 	p_pde_modifier->SetBcsOnBoxBoundary(true); //was false
 
 	/* We then pass in the cell population into an {{{OffLatticeSimulation}}},
 	 * (this time with dimension 2) and set the output directory, output multiple and end time. */
-	OffLatticeSimulation<2> simulator(cell_population);
+	OffLatticeSimulation<dimensions> simulator(cell_population);
 	simulator.AddSimulationModifier(p_pde_modifier);
 	// Create and set an output directory that is different for each simulation
 	std::stringstream output_directory;
-	output_directory << "AddingMacrophages/ChemotaxisImplementationTesting/yLinearBCs/" << id_string;
+	output_directory << "AddingMacrophages/ChemotaxisImplementationTesting/" << dimensions << "D/ySquaredBCs/" << id_string;
 	simulator.SetOutputDirectory(output_directory.str());
 	simulator.SetSamplingTimestepMultiple(12);
 	simulator.SetEndTime(120.0);
@@ -300,29 +377,28 @@ void SetupAndRunSimulation(std::string id_string, double lengthOfDomain, double 
 
 
 
-	MAKE_PTR(DiffusionForce<2>, p_diffusion_force);
-    /*
-     * Compute the diffusion coefficient D as D = k*T/(6*pi*eta*r), where
-     *
-     * k = Boltzmann's constant,
-     * T = absolute temperature,
-     * eta = dynamic viscosity,
-     * r = cell radius = 1
-     */
-	double D = 1.0; // Desired Diffusion Constant
-
-	//p_diffusion_force->SetViscosity();
-	p_diffusion_force->SetAbsoluteTemperature(temperatureKelvin);
-	simulator.AddForce(p_diffusion_force);
-
+//	MAKE_PTR(DiffusionForce<2>, p_diffusion_force);
+//    /*
+//     * Compute the diffusion coefficient D as D = k*T/(6*pi*eta*r), where
+//     *
+//     * k = Boltzmann's constant,
+//     * T = absolute temperature,
+//     * eta = dynamic viscosity,
+//     * r = cell radius = 1
+//     */
+//	double D = 1.0; // Desired Diffusion Constant
+//
+//	//p_diffusion_force->SetViscosity();
+//	p_diffusion_force->SetAbsoluteTemperature(temperatureKelvin);
+//	simulator.AddForce(p_diffusion_force);
+//
 
 	// Chemotaxis
-	MAKE_PTR(ChemotacticForceCSF1<2>, p_chemotactic_force);
+	MAKE_PTR(ChemotacticForceCSF1<dimensions>, p_chemotactic_force);
 	p_chemotactic_force->SetChemotaxisSensitivity(chemotaxisSensitivity);
 	simulator.AddForce(p_chemotactic_force);
 
 	/* To run the simulation, we call {{{Solve()}}}. */
-
 	try
 	{
 		simulator.Solve();
@@ -330,45 +406,74 @@ void SetupAndRunSimulation(std::string id_string, double lengthOfDomain, double 
 		OutputFileHandler results_handler(output_directory.str(), false);
 		out_stream results_file = results_handler.OpenOutputFile("results.completiontimeandlocation");
 
-		Node<2>* p_MacNode = cell_population.GetNode(nodeNum);
-		const c_vector<double, 2>& r_MacNode_location = p_MacNode->rGetLocation();
+		Node<dimensions>* p_MacNode = cell_population.GetNode(nodeNum);
+		const c_vector<double, dimensions>& r_MacNode_location = p_MacNode->rGetLocation();
 
 		// Output summary statistics to results file
 		(*results_file) << "ID" << ","
 						<< "Simulation error" << ","
-						<< "Macrophage x coordinate at end" << ","
-						<< "Macrophage y coordinate at end" << ","
-						<< "Simulation time at end" << std::endl;
+						<< "Macrophage x coordinate at end" << ",";
+						if(dimensions > 1)
+						{
+							(*results_file) << "Macrophage y coordinate at end" << ",";
+						}
+						if(dimensions > 2)
+						{
+							(*results_file) << "Macrophage z coordinate at end" << ",";
+						}
+		(*results_file) << "Simulation time at end" << std::endl;
 
 		(*results_file) << id_string << ","
 						<< "false" << ","
-						<< boost::lexical_cast<std::string>(r_MacNode_location[0]) << ","
-						<< boost::lexical_cast<std::string>(r_MacNode_location[1]) << ","
-						<< boost::lexical_cast<std::string>(SimulationTime::Instance()->GetTime());
+						<< boost::lexical_cast<std::string>(r_MacNode_location[0]) << ",";
+						if(dimensions > 1)
+						{
+							(*results_file) << boost::lexical_cast<std::string>(r_MacNode_location[1]) << ",";
+						}
+						if(dimensions > 2)
+						{
+							(*results_file) << boost::lexical_cast<std::string>(r_MacNode_location[2]) << ",";
+						}
+		(*results_file) << boost::lexical_cast<std::string>(SimulationTime::Instance()->GetTime());
 		// Tidy up
 		results_file->close();
 	}
-	catch(...)//std::string error)
+	catch(Exception& e)//std::string error)
 	{
+		//throw(e);
 		//std::cout << error;
 		OutputFileHandler results_handler(output_directory.str(), false);
 		out_stream results_file = results_handler.OpenOutputFile("results.completiontimeandlocation");
 
-		Node<2>* p_MacNode = cell_population.GetNode(nodeNum);
+		Node<dimensions>* p_MacNode = cell_population.GetNode(nodeNum);
 		const c_vector<double, 2>& r_MacNode_location = p_MacNode->rGetLocation();
 
 		// Output summary statistics to results file
 		(*results_file) << "ID" << ","
 						<< "Simulation error" << ","
-						<< "Macrophage x coordinate at end" << ","
-						<< "Macrophage y coordinate at end" << ","
-						<< "Simulation time at end" << std::endl;
+						<< "Macrophage x coordinate at end" << ",";
+						if(dimensions > 1)
+						{
+							(*results_file) << "Macrophage y coordinate at end" << ",";
+						}
+						if(dimensions > 2)
+						{
+							(*results_file) << "Macrophage z coordinate at end" << ",";
+						}
+		(*results_file) << "Simulation time at end" << std::endl;
 
 		(*results_file) << id_string << ","
 						<< "true" << ","
-						<< boost::lexical_cast<std::string>(r_MacNode_location[0]) << ","
-						<< boost::lexical_cast<std::string>(r_MacNode_location[1]) << ","
-						<< boost::lexical_cast<std::string>(SimulationTime::Instance()->GetTime());
+						<< boost::lexical_cast<std::string>(r_MacNode_location[0]) << ",";
+						if(dimensions > 1)
+						{
+							(*results_file) << boost::lexical_cast<std::string>(r_MacNode_location[1]) << ",";
+						}
+						if(dimensions > 2)
+						{
+							(*results_file) << boost::lexical_cast<std::string>(r_MacNode_location[2]) << ",";
+						}
+		(*results_file) << boost::lexical_cast<std::string>(SimulationTime::Instance()->GetTime());
 		// Tidy up
 		results_file->close();
 	}

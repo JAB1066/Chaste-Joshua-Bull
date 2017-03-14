@@ -2,5 +2,8 @@ TestHello.hpp
 Simulations/TestRunningTumourSpheroidSimulationsTutorialEdited.hpp
 Simulations/TestNodeBasedTumourSpheroid.hpp
 Simulations/TestAddingMacrophages.hpp
+Simulations/TestMacrophageChemotaxis.hpp
 Simulations/TestTumourSpheroidOtherModellingMethodologies.hpp
+Simulations/TestCuboidBoundaryConditions.hpp
+Simulations/TestFullSpheroidSimulationsWithMacrophages.hpp
 Temp/TestCAModel.hpp

@@ -61,8 +61,8 @@ double DiffusionForceChooseD<DIM>::GetDiffusionScalingConstant()
 	 * In DiffusionForce, this is given by msBoltzmannConstant*mAbsoluteTemperature/(6.0*mViscosity*M_PI). This method is designed
 	 * so that this can be overwritten with an arbitrary constant. The reason for allowing this (rather than defining in terms
 	 * of physical constants) is that in the case of cell motion, we want to be able to set a parameter which roughly corresponds
-	 * to "cell motility", which isn't defined in terms of physical constants (at least, not in any meaningful sense). This simplifies
-	 * the process of having to select even more arbitrary "temperature" and "viscosity" for what is an active process (cell movement)
+	 * to "cell motility", which isn't defined in terms of these physical constants. This simplifies
+	 * the process of having to select arbitrary "temperature" and "viscosity" for what is an active process (cell movement)
 	 * that isn't really diffusion at all.
 	 */
     return mD;
@@ -91,8 +91,8 @@ void DiffusionForceChooseD<DIM>::AddForceContribution(AbstractCellPopulation<DIM
 
         double nu = dynamic_cast<AbstractOffLatticeCellPopulation<DIM>*>(&rCellPopulation)->GetDampingConstant(node_index);
 
-        double diffusion_const_scaling = GetDiffusionScalingConstant();
-        double diffusion_constant = diffusion_const_scaling/node_radius;
+        double D = GetDiffusionScalingConstant();
+        double diffusion_constant = D/(node_radius*2);
 
         c_vector<double, DIM> force_contribution;
         for (unsigned i=0; i<DIM; i++)
@@ -110,7 +110,7 @@ void DiffusionForceChooseD<DIM>::AddForceContribution(AbstractCellPopulation<DIM
 
             //force_contribution[i] = (nu*sqrt(2.0*diffusion_constant*dt)/dt)*xi;
             //We want xi to be normally distributed, with variance 2DT
-            force_contribution[i] = (sqrt(2.0*DIM*diffusion_constant*dt)/dt)*xi;
+            force_contribution[i] = (nu*sqrt(2.0*diffusion_constant*dt)/dt)*xi;
         }
         node_iter->AddAppliedForceContribution(force_contribution);
     }

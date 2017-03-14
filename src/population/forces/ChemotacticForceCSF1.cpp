@@ -86,7 +86,6 @@ void ChemotacticForceCSF1<DIM>::AddForceContribution(AbstractCellPopulation<DIM>
 
     //CellwiseDataGradient<DIM> gradients;
     //gradients.SetupGradients(rCellPopulation, "csf1");
-
 	// Loop over cells, find which element of PDE mesh it is in, and determine gradient of PDE in that element
     for (typename AbstractCellPopulation<DIM>::Iterator cell_iter = rCellPopulation.Begin();
          cell_iter != rCellPopulation.End();
@@ -98,34 +97,46 @@ void ChemotacticForceCSF1<DIM>::AddForceContribution(AbstractCellPopulation<DIM>
         if (cell_iter->GetCellProliferativeType()->template IsType<MacrophageCellProliferativeType>())
         {
         	unsigned node_global_index = rCellPopulation.GetLocationIndexUsingCell(*cell_iter);
+
+        	c_vector<double,DIM> gradient;
         	// Find gradients in x, y, z directions at node
-        	double xGrad = 0;
-        	double yGrad = 0;
-        	double zGrad = 0;
+        	double xGrad;
+			double yGrad;
+			double zGrad;
+        	switch(DIM)
+        	{
+        	case 1:
+        		xGrad = cell_iter->GetCellData()->GetItem("csf1_grad_x");
+        		gradient(0) = xGrad;
+        		PRINT_VARIABLE(gradient[0]);
+        		break;
 
+        	case 2:
+        		xGrad = cell_iter->GetCellData()->GetItem("csf1_grad_x");
+        		yGrad = cell_iter->GetCellData()->GetItem("csf1_grad_y");
+        		gradient(0) = xGrad;
+        		gradient(1) = yGrad;
+        		break;
 
+        	case 3:
+        		xGrad = cell_iter->GetCellData()->GetItem("csf1_grad_x");
+        		yGrad = cell_iter->GetCellData()->GetItem("csf1_grad_y");
+        		zGrad = cell_iter->GetCellData()->GetItem("csf1_grad_z");
+        		gradient(0) = xGrad;
+        		gradient(1) = yGrad;
+        		gradient(2) = zGrad;
+        	}
 
+        	/*
         	//gradient.clear(); // Ensure previous x, y, z gradients are cleared
-
         	xGrad = cell_iter->GetCellData()->GetItem("csf1_grad_x");
         	yGrad = cell_iter->GetCellData()->GetItem("csf1_grad_y");
+
         	if(DIM == 3)
         	{
             	zGrad = cell_iter->GetCellData()->GetItem("csf1_grad_z");
         	}
-
-            //std::vector<double> gradient (3);
-            c_vector<double,DIM> gradient;
-        	gradient(0) = xGrad;
-        	gradient(1) = yGrad;
-        	if(DIM == 3)
-        	{
-        		gradient(2) = zGrad;
-        	}
-
-
-        	//gradient.push_back(yGrad);
-        	//gradient.push_back(zGrad);
+        	*/
 
         	double magnitude_of_gradient = norm_2(gradient);
         	double nutrient_concentration = cell_iter->GetCellData()->GetItem("csf1");
@@ -133,9 +144,16 @@ void ChemotacticForceCSF1<DIM>::AddForceContribution(AbstractCellPopulation<DIM>
         	// At the moment, magnitude of Chemotactic force is just the sensitivity
             double force_magnitude = GetChemotacticForceMagnitude(nutrient_concentration, magnitude_of_gradient);
             // force += chi * gradC/|gradC|
+
             if (magnitude_of_gradient > 0)
             {
-                c_vector<double,DIM> force = force_magnitude*gradient;//(force_magnitude/magnitude_of_gradient)*gradient;
+                c_vector<double,DIM> force = force_magnitude*gradient; //(force_magnitude/magnitude_of_gradient)*gradient;
+//                for(int i = 0; i < DIM; i++)
+//                {
+//                	PRINT_VARIABLE(i);
+//                	PRINT_VARIABLE(force[i]);
+//                }
+
                 rCellPopulation.GetNode(node_global_index)->AddAppliedForceContribution(force);
             }
             // else Fc=0
@@ -146,7 +164,7 @@ void ChemotacticForceCSF1<DIM>::AddForceContribution(AbstractCellPopulation<DIM>
 template<unsigned DIM>
 void ChemotacticForceCSF1<DIM>::OutputForceParameters(out_stream& rParamsFile)
 {
-    // No parameters to include
+    *rParamsFile << "\t\t\t<ChemotaxisSensitivityCoefficient>" << sensitivity << "</ChemotaxisSensitivityCoefficient> \n";
 
     // Call method on direct parent class
     AbstractForce<DIM>::OutputForceParameters(rParamsFile);

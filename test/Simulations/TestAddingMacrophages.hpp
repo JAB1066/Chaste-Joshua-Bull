@@ -49,6 +49,7 @@
 #include "ApoptoticCellKiller.hpp"
 
 #include "DiffusionForce.hpp"
+#include "DiffusionForceChooseD.hpp"
 
 #include "CellMutationStatesCountWriter.hpp"
 #include "CellProliferativeTypesCountWriter.hpp"
@@ -60,6 +61,12 @@
 
 #include "DifferentialAdhesionGeneralisedLinearSpringForceWithMacrophages.hpp"
 #include "MacrophageProximityLabellingModifier.hpp"
+
+#include <boost/program_options/options_description.hpp>
+#include <boost/program_options/variables_map.hpp>
+#include <boost/program_options/parsers.hpp>
+#include <boost/lexical_cast.hpp>
+
 
 /**
  * Functional Boundary Condition, setting BC = bcConc if z = distance
@@ -243,7 +250,7 @@ public:
 	}
 
 	void dontTestMacrophageRespondingToCSF1() throw(Exception)
-													{
+															{
 		// This test simulates a macrophage moving up a chemotactic gradient in 3D.
 		EXIT_IF_PARALLEL;
 
@@ -341,10 +348,10 @@ public:
 		{
 			delete nodes[i];
 		}
-													}
+															}
 
 	void dontTestMacrophagePassingThroughMonolayer() throw(Exception)
-												{
+														{
 		// This test simulates a monolayer of (non-proliferating) tumour cells with a macrophage at one end and a source of CSF at the other.
 		//The macrophage should move up the chemotactic gradient.
 
@@ -456,8 +463,8 @@ public:
 		//p_diffusion_force->SetViscosity();
 		p_diffusion_force->SetAbsoluteTemperature(1);
 		simulator.AddForce(p_diffusion_force);
-		*
-		*/
+		 *
+		 */
 
 		// Chemotaxis
 		MAKE_PTR(ChemotacticForceCSF1<2>, p_chemotactic_force);
@@ -473,10 +480,10 @@ public:
 		{
 			delete nodes[i];
 		}
-												}
+														}
 
-	void TestMacrophagePassingThroughMonolayerDifferentialAdhesion() throw(Exception)
-												{
+	void dontTestMacrophagePassingThroughMonolayerDifferentialAdhesion() throw(Exception)
+														{
 		// This test simulates a monolayer of (non-proliferating) tumour cells with a macrophage at one end and a source of CSF at the other.
 		//The macrophage should move up the chemotactic gradient. We include differential adhesion indicating weakened intercellular adhesion in the presence of macrophages
 
@@ -615,10 +622,10 @@ public:
 		{
 			delete nodes[i];
 		}
-												}
+														}
 
 	void dontTestMacrophagesInfiltratingSpheroid() throw(Exception)
-    											{
+    													{
 		// In previous tests, hypoxic cells continue their cell cycle until they reach the G1 phase. Here, we modify the cell cycle to cause them to freeze wherever they are in their cell cycle.
 		/** The next line is needed because we cannot currently run node based simulations in parallel. */
 		EXIT_IF_PARALLEL;
@@ -825,7 +832,156 @@ public:
 		{
 			delete nodes[i];
 		}
-    											}
+    													}
+
+	void TestMacrophageBrownianMotion() throw(Exception)
+    													{
+		// Test macrophage random motion and log location after time t
+		/* We vary parameters:
+		 *
+		 * diffusionCoefficient: coefficient for random macrophage motion law (Fickian)
+		 * simulationDuration: length of simulation in hours
+		 *
+		 */
+		const int dimensions = 2;
+		double diffusionCoefficient = 1.0; // D
+		double simulationDuration = 120;
+		std::string id_string = "1";
+
+		// Generate Mesh:
+		// Make Vector
+		std::vector<Node<dimensions>*> nodes;
+
+		// Add macrophage node at origin
+		unsigned nodeNum=0;
+
+		// Add macrophage node
+		switch(dimensions)
+		{
+		case 1:
+			nodes.push_back(new Node<dimensions>(nodeNum, false, 0));
+			break;
+
+		case 2:
+			nodes.push_back(new Node<dimensions>(nodeNum, false, 0, 0));
+			break;
+
+		case 3:
+			nodes.push_back(new Node<dimensions>(nodeNum, false, 0, 0, 0));
+			break;
+		}
+
+
+		NodesOnlyMesh<dimensions> mesh;
+		// Cut off length: 1.5 cell radii
+		mesh.ConstructNodesWithoutMesh(nodes, 1.5);
+
+		// Make cell pointers
+		std::vector<CellPtr> cells;
+
+		MAKE_PTR(WildTypeCellMutationState, p_state);
+		MAKE_PTR(MacrophageCellProliferativeType, p_macrophage_type);
+
+		// Make Macrophage
+		NoCellCycleModel* p_model = new NoCellCycleModel;
+		p_model->SetDimension(dimensions);
+
+		CellPtr p_cell(new Cell(p_state, p_model));
+		p_cell->SetCellProliferativeType(p_macrophage_type);
+
+		cells.push_back(p_cell);
+
+		// Make cell population (2D)
+		NodeBasedCellPopulation<dimensions> cell_population(mesh, cells);
+		//cell_population.AddPopulationWriter<NodeLocationWriter>();
+
+		cell_population.SetDampingConstantNormal(1.0);
+		cell_population.SetDampingConstantMutant(1.0);
+
+
+		/* We then pass in the cell population into an {{{OffLatticeSimulation}}},
+		 * (this time with dimension 2) and set the output directory, output multiple and end time. */
+		OffLatticeSimulation<dimensions> simulator(cell_population);
+
+		// Create and set an output directory that is different for each simulation
+		std::stringstream output_directory;
+		output_directory << "AddingMacrophages/DiffusionImplementationTesting/SingleMacrophage_DistanceInSetTime_OriginalRule/" << id_string;
+		simulator.SetOutputDirectory(output_directory.str());
+		simulator.SetSamplingTimestepMultiple(12);
+		simulator.SetEndTime(simulationDuration);
+
+		MAKE_PTR(DiffusionForceChooseD<dimensions>, p_diffusion_force);
+		p_diffusion_force->SetDiffusionScalingConstant(diffusionCoefficient);
+		simulator.AddForce(p_diffusion_force);
+
+
+		/* To run the simulation, we call {{{Solve()}}}. */
+		simulator.Solve();
+
+		OutputFileHandler results_handler(output_directory.str(), false);
+		out_stream results_file = results_handler.OpenOutputFile("results.completiontimeandlocation");
+
+		Node<dimensions>* p_MacNode = cell_population.GetNode(nodeNum);
+		const c_vector<double, dimensions>& r_MacNode_location = p_MacNode->rGetLocation();
+
+
+
+		// Output summary statistics to results file
+		(*results_file) << "ID" << ","
+						<< "Simulation error" << ",";
+		switch(dimensions)
+		{
+		case(1):
+				(*results_file) << "Macrophage x coordinate at end" << ",";
+		break;
+		case(2):
+				(*results_file) << "Macrophage x coordinate at end" << ","
+								<< "Macrophage y coordinate at end" << ",";
+		break;
+		case(3):
+				(*results_file) << "Macrophage x coordinate at end" << ","
+								<< "Macrophage y coordinate at end" << ","
+								<< "Macrophage z coordinate at end" << ",";
+		break;
+		}
+
+		(*results_file) << "Total Macrophage displacement" << ","
+						<< "Simulation time at end" << std::endl;
+
+		double displacement;
+
+		(*results_file) << id_string << ","
+				<< "0" << ",";
+		switch(dimensions)
+		{
+		case(1):
+				(*results_file) << boost::lexical_cast<std::string>(r_MacNode_location[0]) << ",";
+				displacement = sqrt(r_MacNode_location[0]*r_MacNode_location[0]);
+		break;
+		case(2):
+				(*results_file) << boost::lexical_cast<std::string>(r_MacNode_location[0]) << ","
+								<< boost::lexical_cast<std::string>(r_MacNode_location[1]) << ",";
+				displacement = sqrt(r_MacNode_location[0]*r_MacNode_location[0] + r_MacNode_location[1]*r_MacNode_location[1]);
+		break;
+		case(3):
+				(*results_file) << boost::lexical_cast<std::string>(r_MacNode_location[0]) << ","
+								<< boost::lexical_cast<std::string>(r_MacNode_location[1]) << ","
+								<< boost::lexical_cast<std::string>(r_MacNode_location[2]) << ",";
+				displacement = sqrt(r_MacNode_location[0]*r_MacNode_location[0] + r_MacNode_location[1]*r_MacNode_location[1] + r_MacNode_location[2]*r_MacNode_location[2]);
+		break;
+		}
+		(*results_file) << boost::lexical_cast<std::string>(displacement) << ","
+						<< boost::lexical_cast<std::string>(SimulationTime::Instance()->GetTime());
+		// Tidy up
+		results_file->close();
+
+
+		/* To avoid memory leaks, we conclude by deleting any pointers that we created in the test.*/
+		for (unsigned i=0; i<nodes.size(); i++)
+		{
+			delete nodes[i];
+		}
+    													}
 
 
 };

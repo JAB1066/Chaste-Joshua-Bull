@@ -22,8 +22,8 @@ today = time.strftime('%Y-%m-%dT%H%M')
 # Param ranges (in lists, for itertools product)
 dc = np.linspace(0, 2, num=5)
 sd = np.linspace(12, 120, num=10)
-damp = np.linspace(0.5, 2, num=4)
-itN = np.linspace(0, 24, num=20)
+damp = np.linspace(1, 1, num=1)
+itN = np.linspace(0, 99, num=100)
 
 combined_iterable = enumerate(itertools.product(dc,sd,damp,itN))
 
