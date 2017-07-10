@@ -43,6 +43,7 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <boost/serialization/vector.hpp>
 #include "ChastePoint.hpp"
 
+#include "Debug.hpp"
 /**
  * A boundary condition class for a node based cell population within a cuboid. When
  * the force on a node causes it to pass through a face of the cuboid, it reenters
@@ -73,6 +74,8 @@ private:
     void serialize(Archive & archive, const unsigned int version)
     {
         archive & boost::serialization::base_object<AbstractCellPopulationBoundaryCondition<DIM> >(*this);
+        archive & mLower;
+        archive & mUpper;
     }
 
 public:
@@ -87,6 +90,16 @@ public:
     CuboidPeriodicBoundaryCondition(AbstractCellPopulation<DIM>* pCellPopulation,
                                     ChastePoint<DIM> lower,
 									ChastePoint<DIM> upper);
+
+    /**
+     * @return #mUpper.
+     */
+    ChastePoint<DIM> GetLowerPoint() const;
+
+    /**
+     * @return #mLower.
+     */
+    ChastePoint<DIM> GetUpperPoint() const;
 
     /**
      * Overridden ImposeBoundaryCondition() method.
@@ -114,9 +127,76 @@ public:
      */
     void OutputCellPopulationBoundaryConditionParameters(out_stream& rParamsFile);
 };
-
+//
 //#include "SerializationExportWrapper.hpp"
-//EXPORT_TEMPLATE_CLASS_SAME_DIMS(CuboidPeriodicBoundaryCondition)
+//CHASTE_CLASS_EXPORT(CuboidPeriodicBoundaryCondition)
+//#include "SerializationExportWrapperForCpp.hpp"
+//CHASTE_CLASS_EXPORT(CuboidPeriodicBoundaryCondition)
+
+
+#include "SerializationExportWrapper.hpp"
+EXPORT_TEMPLATE_CLASS_SAME_DIMS(CuboidPeriodicBoundaryCondition)
+
+namespace boost
+{
+namespace serialization
+{
+/**
+ * Serialize information required to construct a CuboidPeriodicBoundaryCondition.
+ */
+template<class Archive, unsigned DIM>
+inline void save_construct_data(
+    Archive & ar, const CuboidPeriodicBoundaryCondition<DIM>* t, const unsigned int file_version)
+{
+
+    // Save data required to construct instance
+    const AbstractCellPopulation<DIM>* const p_cell_population = t->GetCellPopulation();
+    ar << p_cell_population;
+
+    // Archive chaste points one component at a time
+    c_vector<double, DIM> lower = t->GetLowerPoint().rGetLocation();
+    for (unsigned i=0; i<DIM; i++)
+    {
+        ar << lower[i];
+    }
+    c_vector<double, DIM> upper = t->GetUpperPoint().rGetLocation();
+    for (unsigned i=0; i<DIM; i++)
+    {
+        ar << upper[i];
+    }
+
+}
+
+/**
+ * De-serialize constructor parameters and initialize a CuboidPeriodicBoundaryCondition.
+ */
+template<class Archive, unsigned DIM>
+inline void load_construct_data(
+    Archive & ar, CuboidPeriodicBoundaryCondition<DIM>* t, const unsigned int file_version)
+{
+    // Retrieve data from archive required to construct new instance
+    AbstractCellPopulation<DIM>* p_cell_population;
+    ar >> p_cell_population;
+
+    // Archive c_vectors one component at a time
+    c_vector<double, DIM> lower_vec;
+    for (unsigned i=0; i<DIM; i++)
+    {
+        ar >> lower_vec[i];
+    }
+    c_vector<double, DIM> upper_vec;
+    for (unsigned i=0; i<DIM; i++)
+    {
+        ar >> upper_vec[i];
+    }
+
+    ChastePoint<DIM> lower (lower_vec);
+    ChastePoint<DIM> upper (upper_vec);
+    // Invoke inplace constructor to initialise instance
+    ::new(t)CuboidPeriodicBoundaryCondition<DIM>(p_cell_population, lower, upper);
+}
+}
+} // namespace ...
 
 
 #endif /*CUBOIDPERIODICBOUNDARYCONDITION_HPP_*/

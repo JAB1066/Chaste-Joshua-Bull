@@ -58,6 +58,17 @@ CuboidPeriodicBoundaryCondition<DIM>::CuboidPeriodicBoundaryCondition(AbstractCe
     }
 }
 
+template<unsigned DIM>
+ChastePoint<DIM> CuboidPeriodicBoundaryCondition<DIM>::GetLowerPoint() const
+{
+    return mLower;
+}
+
+template<unsigned DIM>
+ChastePoint<DIM> CuboidPeriodicBoundaryCondition<DIM>::GetUpperPoint() const
+{
+    return mUpper;
+}
 
 template<unsigned DIM>
 void CuboidPeriodicBoundaryCondition<DIM>::ImposeBoundaryCondition(const std::map<Node<DIM>*, c_vector<double, DIM> >& rOldLocations)
@@ -133,5 +144,5 @@ template class CuboidPeriodicBoundaryCondition<2>;
 template class CuboidPeriodicBoundaryCondition<3>;
 
 // Serialization for Boost >= 1.36
-//#include "SerializationExportWrapperForCpp.hpp"
-//EXPORT_TEMPLATE_CLASS_SAME_DIMS(CuboidPeriodicBoundaryCondition)
+#include "SerializationExportWrapperForCpp.hpp"
+EXPORT_TEMPLATE_CLASS_SAME_DIMS(CuboidPeriodicBoundaryCondition)

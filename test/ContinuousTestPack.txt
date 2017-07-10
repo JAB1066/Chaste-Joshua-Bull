@@ -7,3 +7,5 @@ Simulations/TestTumourSpheroidOtherModellingMethodologies.hpp
 Simulations/TestCuboidBoundaryConditions.hpp
 Simulations/TestFullSpheroidSimulationsWithMacrophages.hpp
 Temp/TestCAModel.hpp
+debugging/TestArchivingNodeBasedSpheroid.hpp
+Simulations/TestLocalBrownianMotion.hpp
