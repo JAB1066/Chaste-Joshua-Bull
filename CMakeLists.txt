@@ -20,3 +20,21 @@ find_package(Chaste COMPONENTS cell_based)
 # Change the project name in the line below to match the folder this file is in,
 # i.e. the name of your project.
 chaste_do_project(JoshuaBull)
+
+# Add some custom test targets so we can just run on JoshuaBull code
+# Stolen from MicrovesselChaste documentation
+if (Chaste_PROFILE_GPROF OR Chaste_PROFILE_GPERFTOOLS)
+    if (Chaste_PROFILE_GPERFTOOLS)
+        set(extension gif)
+    else()
+        set(extension gmon)
+    endif()
+    
+    set(CTEST_COMMAND ctest)
+    add_custom_target(profile_project_JoshuaBull
+        COMMAND ${CTEST_COMMAND} "-L" "project_JoshuaBull" "--output-on-failure"
+        COMMAND ${PYTHON_EXECUTABLE} "${Chaste_SOURCE_DIR}/cmake/process_profile.py" "${Chaste_PROFILE_OUTPUT_DIR}" ${extension}
+        DEPENDS Profile 
+        WORKING_DIRECTORY ${Chaste_BINARY_DIR}
+        VERBATIM)
+endif()

@@ -33,8 +33,8 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 */
 
-#ifndef ABSTRACTBOXDOMAINPDEMODIFIER_HPP_
-#define ABSTRACTBOXDOMAINPDEMODIFIER_HPP_
+#ifndef AbstractBoxDomainPdeModifier_TEMP_HPP_
+#define AbstractBoxDomainPdeModifier_TEMP_HPP_
 
 #include "ChasteSerialization.hpp"
 #include <boost/serialization/base_object.hpp>
@@ -47,7 +47,7 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * coupled to a cell-based simulation on a coarse domain.
  */
 template<unsigned DIM>
-class AbstractBoxDomainPdeModifier : public AbstractPdeModifier<DIM>
+class AbstractBoxDomainPdeModifier_TEMP : public AbstractPdeModifier<DIM>
 {
     friend class TestEllipticBoxDomainPdeModifier;
     friend class TestParabolicBoxDomainPdeModifier;
@@ -109,7 +109,7 @@ public:
      * @param stepSize step size to be used in the FE mesh (defaults to 1.0, i.e. the default cell size)
      * @param solution solution vector (defaults to NULL)
      */
-    AbstractBoxDomainPdeModifier(boost::shared_ptr<AbstractLinearPde<DIM,DIM> > pPde=boost::shared_ptr<AbstractLinearPde<DIM,DIM> >(),
+    AbstractBoxDomainPdeModifier_TEMP(boost::shared_ptr<AbstractLinearPde<DIM,DIM> > pPde=boost::shared_ptr<AbstractLinearPde<DIM,DIM> >(),
                                  boost::shared_ptr<AbstractBoundaryCondition<DIM> > pBoundaryCondition=boost::shared_ptr<AbstractBoundaryCondition<DIM> >(),
                                  bool isNeumannBoundaryCondition=true,
                                  boost::shared_ptr<ChasteCuboid<DIM> > pMeshCuboid=boost::shared_ptr<ChasteCuboid<DIM> >(),
@@ -119,7 +119,7 @@ public:
     /**
      * Destructor.
      */
-    virtual ~AbstractBoxDomainPdeModifier();
+    virtual ~AbstractBoxDomainPdeModifier_TEMP();
 
     /**
      * @return mStepSize.
@@ -194,6 +194,6 @@ public:
 };
 
 #include "SerializationExportWrapper.hpp"
-TEMPLATED_CLASS_IS_ABSTRACT_1_UNSIGNED(AbstractBoxDomainPdeModifier)
+TEMPLATED_CLASS_IS_ABSTRACT_1_UNSIGNED(AbstractBoxDomainPdeModifier_TEMP)
 
-#endif /*ABSTRACTBOXDOMAINPDEMODIFIER_HPP_*/
+#endif /*AbstractBoxDomainPdeModifier_TEMP_HPP_*/

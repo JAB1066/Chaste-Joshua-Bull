@@ -71,6 +71,7 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "AveragedSourceEllipticPde.hpp"
 #include "UniformSourceEllipticPde.hpp"
 #include "EllipticBoxDomainPdeModifier.hpp"
+#include "AbstractBoxDomainPdeModifier.hpp"
 #include "AveragedSourceParabolicPde.hpp"
 #include "ParabolicBoxDomainPdeModifier.hpp"
 #include "ApoptoticCellKiller.hpp"

@@ -7,8 +7,9 @@ import time
 import numpy as np
 
 executable = '/scratch/eclipse/workspace/chaste-release/projects/JoshuaBull/apps/Exe_ParallelFullSpheroidSimulationsWithMacrophages'
-
+#export CHASTE_TEST_OUTPUT=/media/bull/MyPassport/DPhil/chaste_test_output/
 chaste_test_dir = os.environ.get('CHASTE_TEST_OUTPUT')
+
 #path_to_output = os.path.join(chaste_test_dir, 'FullSimulations','DiffusionOnlyParameterSweep')
 path_to_output = os.path.join(chaste_test_dir, 'FullSimulations','Dorie1982','VaryBrownianMotion')
 
@@ -21,7 +22,7 @@ params_list = ['simulation_id', 'diffusionCoefficient']
 today = time.strftime('%Y-%m-%dT%H%M')
 
 # Param ranges (in lists, for itertools product)
-dc = np.linspace(0.0, 3.0, num=4)
+dc = np.linspace(0.0, 3.0, num=31)
 
 combined_iterable = enumerate(itertools.product(dc))
 

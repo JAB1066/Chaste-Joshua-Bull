@@ -89,7 +89,7 @@ public:
         }
     }
 
-    void DontTestDiffusionForceSave() throw (Exception)
+    void TestDiffusionForceSave() throw (Exception)
     {
         EXIT_IF_PARALLEL; // Beware of processes overwriting the identical archives of other processes
         OutputFileHandler handler("archive", false);

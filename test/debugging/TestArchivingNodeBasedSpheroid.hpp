@@ -33,84 +33,47 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
  */
 
-#ifndef TESTARCHIVING_HPP_
-#define TESTARCHIVING_HPP_
+#ifndef TESTARCHIVINGNODEBASEDSPHEROID_HPP_
+#define TESTARCHIVINGNODEBASEDSPHEROID_HPP_
 
 #include <cxxtest/TestSuite.h>
-
 #include "CheckpointArchiveTypes.hpp"
-
 #include "AbstractCellBasedTestSuite.hpp"
 #include "SmartPointers.hpp"
-
 #include "PetscSetupAndFinalize.hpp"
-
 #include "OffLatticeSimulation.hpp"
-#include "GeneralisedLinearSpringForce.hpp"
 #include "NodesOnlyMesh.hpp"
 #include "NodeBasedCellPopulation.hpp"
 #include "NoCellCycleModel.hpp"
 #include "WildTypeCellMutationState.hpp"
-#include "StemCellProliferativeType.hpp"
-
-#include "AveragedSourceEllipticPde.hpp"
-#include "UniformSourceEllipticPde.hpp"
-#include "EllipticBoxDomainPdeModifier.hpp"
-#include "ApoptoticCellKiller.hpp"
-
 #include "CellBasedSimulationArchiver.hpp"
-
 #include "DiffusionForce.hpp"
 #include "DiffusionForceChooseD.hpp"
 
 
-
-
-
-class TestArchiving : public AbstractCellBasedTestSuite
+class TestArchivingNodeBasedSpheroid : public AbstractCellBasedTestSuite
 {
 public:
 
-	void dontTestSaveArchiving() throw(Exception)
+	void DontTestSaveArchiving() throw(Exception)
 	{
-		/** The next line is needed because we cannot currently run node based simulations in parallel. */
 		EXIT_IF_PARALLEL;
 
-		// Generate Mesh:
-		// Make Vector
 		std::vector<Node<3>*> nodes;
-		// Add some nodes
 
-		// Tumour Nodes
-		unsigned nodeNum=0;
-		double initialRadius = 2;
-		for (double x=-initialRadius; x<initialRadius; x++)
-		{
-			for (double y=-initialRadius; y<initialRadius; y++)
-			{
-				for (double z=-initialRadius; z<initialRadius; z++)
-				{
-					if(pow(x,2) + pow(y,2) + pow(z,2) < pow(initialRadius,2))
-					{
-						nodes.push_back(new Node<3>(nodeNum,  false,  x, y, z));
-						nodeNum++;
-					}
-				}
-			}
-		}
+		nodes.push_back(new Node<3>(0,  false, 1, 1, 1));
+		nodes.push_back(new Node<3>(1,  false, -1, -1, 1));
+		nodes.push_back(new Node<3>(2,  false, 1, -1, -1));
+		nodes.push_back(new Node<3>(3,  false, -1, 1, -1));
 
 		NodesOnlyMesh<3> mesh;
-		// Cut off length: 1.5 cell radii
 		mesh.ConstructNodesWithoutMesh(nodes, 1.5);
 
 		// Make cell pointers
 		std::vector<CellPtr> cells;
-		//MAKE_PTR(WildTypeCellMutationState, p_state);
-		boost::shared_ptr<AbstractCellMutationState> p_state(new WildTypeCellMutationState);
-		MAKE_PTR(StemCellProliferativeType, p_stem_type);
+		MAKE_PTR(WildTypeCellMutationState, p_state);
 
-		// Create tumour cells manually
-		for (unsigned i=0; i<nodeNum; i++)
+		for (unsigned i=0; i<4; i++)
 		{
 			NoCellCycleModel* p_model = new NoCellCycleModel;
 			CellPtr p_cell(new Cell(p_state, p_model));
@@ -120,52 +83,24 @@ public:
 		// Make cell population (3D)
 		NodeBasedCellPopulation<3> cell_population(mesh, cells);
 
-		// Make PDE (Oxygen)
-		MAKE_PTR_ARGS(AveragedSourceEllipticPde<3>, p_pde, (cell_population, -0.03));//was -0.03
-		MAKE_PTR_ARGS(ConstBoundaryCondition<3>, p_bc, (1.0));
-		bool is_neumann_bc = false; // Dirichlet BCs
-
-		// Create a ChasteCuboid on which to base the finite element mesh used to solve the PDE
-		c_vector<double,3> centroid = cell_population.GetCentroidOfCellPopulation();
-		ChastePoint<3> lower(-5,-5,-5);
-		ChastePoint<3> upper(5,5,5);
-		MAKE_PTR_ARGS(ChasteCuboid<3>, p_cuboid, (lower, upper));
-
-		// Create a PDE modifier and set the name of the dependent variable in the PDE
-		MAKE_PTR_ARGS(EllipticBoxDomainPdeModifier<3>, p_pde_modifier, (p_pde, p_bc, is_neumann_bc, p_cuboid, 1.0));
-		p_pde_modifier->SetDependentVariableName("oxygen");
-		p_pde_modifier->SetBcsOnBoxBoundary(true); //was false
-
-
-		/* We then pass in the cell population into an {{{OffLatticeSimulation}}},
-		 * (this time with dimension 3) and set the output directory, output multiple and end time. */
 		OffLatticeSimulation<3> simulator(cell_population);
-		//simulator.AddSimulationModifier(p_pde_modifier);
 		simulator.SetOutputDirectory("Temp/ArchivingTest");
-		simulator.SetSamplingTimestepMultiple(12);//12);
+		simulator.SetSamplingTimestepMultiple(12);
 		simulator.SetEndTime(0.5);
 
 		// Add Brownian motion for all cells
+		/* If both tests are run sequentially (save, then load), both tests pass for both of the below diffusion forces.
+		 * However, if the archive is first created like this, and then you run only the load test, when using "DiffusionForce"
+		 * it will load successfully, but when using "DiffusionForceChooseD" it will give a "what():  unregistered class" error
+		 * */
+
 		MAKE_PTR(DiffusionForceChooseD<3>, p_diffusion_force);
 		//MAKE_PTR(DiffusionForce<3>, p_diffusion_force);
-		p_diffusion_force->SetDiffusionScalingConstant(0.2);
 		simulator.AddForce(p_diffusion_force);
-
-		MAKE_PTR(GeneralisedLinearSpringForce<3>, p_force);
-		p_force->SetMeinekeSpringStiffness(30.0);
-		p_force->SetCutOffLength(1.5);
-		simulator.AddForce(p_force);
-
-		// Killer which removes apoptotic cells
-		MAKE_PTR_ARGS(ApoptoticCellKiller<3>, p_apoptosis_killer, (&cell_population));
-		simulator.AddCellKiller(p_apoptosis_killer);
-
-		/* To run the simulation, we call {{{Solve()}}}. */
 		simulator.Solve();
 
 		CellBasedSimulationArchiver<3, OffLatticeSimulation<3> >::Save(&simulator);
 
-		/* To avoid memory leaks, we conclude by deleting any pointers that we created in the test.*/
 		for (unsigned i=0; i<nodes.size(); i++)
 		{
 			delete nodes[i];
@@ -173,27 +108,14 @@ public:
 	}
 
 	void TestLoadArchiving() throw(Exception)
-					{
-		/* This is a simulation designed to provide groundwork to reproducing Dorie et al.
-		 * "Migration and Internalization of Cells and Polystyrene Microspheres in Tumour Cell Spheroids"
-		 * Experimental Cell Research 141 (1982) 201-209
-		 *
-		 * In this case, inert polystyrene beads infiltrate a tumour spheroid where the only forces at work are proliferation and brownian motion
-		 */
-
+	{
 		OffLatticeSimulation<3>* p_simulator = CellBasedSimulationArchiver<3, OffLatticeSimulation<3> >::Load("Temp/ArchivingTest", 0.5);
-		std::cout << "Simulation Modifiers size = " << p_simulator->GetSimulationModifiers()->size() << std::endl;
-
-
 		p_simulator->SetEndTime(1.5);
 		p_simulator->Solve();
 		CellBasedSimulationArchiver<3, OffLatticeSimulation<3> >::Save(p_simulator);
 		delete p_simulator;
-
-
-
-					}
+	}
 
 };
 
-#endif /*TESTARCHIVING_HPP_*/
+#endif /*TESTARCHIVINGNODEBASEDSPHEROID_HPP_*/

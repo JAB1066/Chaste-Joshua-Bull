@@ -33,14 +33,14 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 */
 
-#include "AbstractBoxDomainPdeModifier.hpp"
+#include "AbstractBoxDomainPdeModifier_TEMP.hpp"
 #include "ReplicatableVector.hpp"
 #include "LinearBasisFunction.hpp"
 
 #include "Debug.hpp"
 
 template<unsigned DIM>
-AbstractBoxDomainPdeModifier<DIM>::AbstractBoxDomainPdeModifier(boost::shared_ptr<AbstractLinearPde<DIM,DIM> > pPde,
+AbstractBoxDomainPdeModifier_TEMP<DIM>::AbstractBoxDomainPdeModifier_TEMP(boost::shared_ptr<AbstractLinearPde<DIM,DIM> > pPde,
                                                                 boost::shared_ptr<AbstractBoundaryCondition<DIM> > pBoundaryCondition,
                                                                 bool isNeumannBoundaryCondition,
                                                                 boost::shared_ptr<ChasteCuboid<DIM> > pMeshCuboid,
@@ -63,30 +63,30 @@ AbstractBoxDomainPdeModifier<DIM>::AbstractBoxDomainPdeModifier(boost::shared_pt
 }
 
 template<unsigned DIM>
-AbstractBoxDomainPdeModifier<DIM>::~AbstractBoxDomainPdeModifier()
+AbstractBoxDomainPdeModifier_TEMP<DIM>::~AbstractBoxDomainPdeModifier_TEMP()
 {
 }
 
 template<unsigned DIM>
-double AbstractBoxDomainPdeModifier<DIM>::GetStepSize()
+double AbstractBoxDomainPdeModifier_TEMP<DIM>::GetStepSize()
 {
      return mStepSize;
 }
 
 template<unsigned DIM>
-void AbstractBoxDomainPdeModifier<DIM>::SetBcsOnBoxBoundary(bool setBcsOnBoxBoundary)
+void AbstractBoxDomainPdeModifier_TEMP<DIM>::SetBcsOnBoxBoundary(bool setBcsOnBoxBoundary)
 {
 	mSetBcsOnBoxBoundary = setBcsOnBoxBoundary;
 }
 
 template<unsigned DIM>
-bool AbstractBoxDomainPdeModifier<DIM>::AreBcsSetOnBoxBoundary()
+bool AbstractBoxDomainPdeModifier_TEMP<DIM>::AreBcsSetOnBoxBoundary()
 {
     return mSetBcsOnBoxBoundary;
 }
 
 template<unsigned DIM>
-void AbstractBoxDomainPdeModifier<DIM>::SetupSolve(AbstractCellPopulation<DIM,DIM>& rCellPopulation, std::string outputDirectory)
+void AbstractBoxDomainPdeModifier_TEMP<DIM>::SetupSolve(AbstractCellPopulation<DIM,DIM>& rCellPopulation, std::string outputDirectory)
 {
 	MARK;
     AbstractPdeModifier<DIM>::SetupSolve(rCellPopulation, outputDirectory);
@@ -96,7 +96,7 @@ void AbstractBoxDomainPdeModifier<DIM>::SetupSolve(AbstractCellPopulation<DIM,DI
 }
 
 template<unsigned DIM>
-void AbstractBoxDomainPdeModifier<DIM>::GenerateFeMesh(boost::shared_ptr<ChasteCuboid<DIM> > pMeshCuboid, double stepSize)
+void AbstractBoxDomainPdeModifier_TEMP<DIM>::GenerateFeMesh(boost::shared_ptr<ChasteCuboid<DIM> > pMeshCuboid, double stepSize)
 {
     // Create a regular coarse tetrahedral mesh
     this->mpFeMesh = new TetrahedralMesh<DIM,DIM>();
@@ -133,7 +133,7 @@ void AbstractBoxDomainPdeModifier<DIM>::GenerateFeMesh(boost::shared_ptr<ChasteC
 }
 
 template<unsigned DIM>
-void AbstractBoxDomainPdeModifier<DIM>::UpdateCellData(AbstractCellPopulation<DIM,DIM>& rCellPopulation)
+void AbstractBoxDomainPdeModifier_TEMP<DIM>::UpdateCellData(AbstractCellPopulation<DIM,DIM>& rCellPopulation)
 {
     // Store the PDE solution in an accessible form
     ReplicatableVector solution_repl(this->mSolution);
@@ -206,7 +206,7 @@ void AbstractBoxDomainPdeModifier<DIM>::UpdateCellData(AbstractCellPopulation<DI
 }
 
 template<unsigned DIM>
-void AbstractBoxDomainPdeModifier<DIM>::InitialiseCellPdeElementMap(AbstractCellPopulation<DIM,DIM>& rCellPopulation)
+void AbstractBoxDomainPdeModifier_TEMP<DIM>::InitialiseCellPdeElementMap(AbstractCellPopulation<DIM,DIM>& rCellPopulation)
 {
 	MARK;
     mCellPdeElementMap.clear();
@@ -238,7 +238,7 @@ void AbstractBoxDomainPdeModifier<DIM>::InitialiseCellPdeElementMap(AbstractCell
 }
 
 template<unsigned DIM>
-void AbstractBoxDomainPdeModifier<DIM>::UpdateCellPdeElementMap(AbstractCellPopulation<DIM,DIM>& rCellPopulation)
+void AbstractBoxDomainPdeModifier_TEMP<DIM>::UpdateCellPdeElementMap(AbstractCellPopulation<DIM,DIM>& rCellPopulation)
 {
     // Find the element of mpCoarsePdeMesh that contains each cell and populate mCellPdeElementMap
     for (typename AbstractCellPopulation<DIM>::Iterator cell_iter = rCellPopulation.Begin();
@@ -252,13 +252,13 @@ void AbstractBoxDomainPdeModifier<DIM>::UpdateCellPdeElementMap(AbstractCellPopu
 }
 
 template<unsigned DIM>
-void AbstractBoxDomainPdeModifier<DIM>::OutputSimulationModifierParameters(out_stream& rParamsFile)
+void AbstractBoxDomainPdeModifier_TEMP<DIM>::OutputSimulationModifierParameters(out_stream& rParamsFile)
 {
     // No parameters to output, so just call method on direct parent class
     AbstractPdeModifier<DIM>::OutputSimulationModifierParameters(rParamsFile);
 }
 
 // Explicit instantiation
-template class AbstractBoxDomainPdeModifier<1>;
-template class AbstractBoxDomainPdeModifier<2>;
-template class AbstractBoxDomainPdeModifier<3>;
+template class AbstractBoxDomainPdeModifier_TEMP<1>;
+template class AbstractBoxDomainPdeModifier_TEMP<2>;
+template class AbstractBoxDomainPdeModifier_TEMP<3>;
