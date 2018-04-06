@@ -6,7 +6,7 @@ import time
 
 import numpy as np
 
-executable = '/scratch/Bull/chaste-release/projects/JoshuaBull/apps/Exe_ParallelDiffusionImplementationTesting'
+executable = '/mi/share/scratch/bull/ChasteStuff/chaste-release/projects/JoshuaBull/apps/Exe_ParallelSpheroidGrowthVaryingOxygenThresholds'
 
 chaste_test_dir = os.environ.get('CHASTE_TEST_OUTPUT')
 path_to_output = os.path.join(chaste_test_dir, 'ParameterSweeps','SpheroidGrowthVaryingOxygenThreshold')
@@ -21,7 +21,7 @@ today = time.strftime('%Y-%m-%dT%H%M')
 
 # Param ranges (in lists, for itertools product)
 oc = np.linspace(0.03, 0.09, num=3)
-g1 = np.linspace(4.0, 12.0, num=3)
+g1 = np.linspace(4.0, 4.0, num=1) # 4.0 forge, 8.0 polaris, 12.0 pyro
 hc = np.linspace(0.10, 0.30, num=5)
 qc = np.linspace(0.30, 0.5, num=5)
 chd = np.linspace(4.0, 12.0, num=3)
@@ -42,7 +42,7 @@ def run_simulations():
     if not os.path.exists(path_to_output):
     	os.makedirs(path_to_output)
     
-    params_file = open(path_to_output + '/params_file.csv', 'w')
+    params_file = open(path_to_output + '/params_file_forge.csv', 'w')
     params_file.write(','.join(params_list) + '\n')
 
     base_command = 'nice ' + executable
@@ -62,7 +62,7 @@ def run_simulations():
     params_file.close()
 
     # Use processes equal to the number of cpus available
-    count = multiprocessing.cpu_count()
+    count = 20#multiprocessing.cpu_count()
 
     print("Py: Starting simulations with " + str(count) + " processes")
 

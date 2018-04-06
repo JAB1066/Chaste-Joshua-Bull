@@ -205,7 +205,7 @@ void SetupAndRunSimulation(std::string id_string, double oxygenConsumptionRate, 
 		MAKE_PTR(StemCellProliferativeType, p_stem_type);
 
 		// Create tumour cells manually
-		for (unsigned i=0; i<firstMacrophageNode; i++)
+		for (unsigned i=0; i<nodeNum; i++)
 		{
 			SimpleOxygenBasedCellCycleModelFreezeWhenHypoxic* p_model = new SimpleOxygenBasedCellCycleModelFreezeWhenHypoxic;
 			p_model->SetDimension(3);
@@ -256,7 +256,7 @@ void SetupAndRunSimulation(std::string id_string, double oxygenConsumptionRate, 
 		OffLatticeSimulation<3> simulator(cell_population);
 		simulator.AddSimulationModifier(p_pde_modifier);
 		std::stringstream output_directory;
-		output_directory << "ParameterSweeps/SpheroidGrowthVaryingOxygenThreshold/" << id_string;
+		output_directory << "ParameterSweeps/SpheroidGrowthVaryingOxygenThreshold/" << id_string << "_forge/";
 		simulator.SetOutputDirectory(output_directory.str());
 		simulator.SetSamplingTimestepMultiple(60); // One visualisation every 30 minutes...
 		simulator.SetEndTime(96.0); // ...for 96 hours

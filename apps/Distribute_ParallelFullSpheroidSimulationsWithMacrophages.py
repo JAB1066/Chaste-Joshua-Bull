@@ -6,25 +6,27 @@ import time
 
 import numpy as np
 
-executable = '/scratch/eclipse/workspace/chaste-release/projects/JoshuaBull/apps/Exe_ParallelFullSpheroidSimulationsWithMacrophages'
+executable = '/mi/share/scratch/bull/ChasteStuff/chaste-release/projects/JoshuaBull/apps/Exe_ParallelFullSpheroidSimulationsWithMacrophages'
 #export CHASTE_TEST_OUTPUT=/media/bull/MyPassport/DPhil/chaste_test_output/
+#export CHASTE_TEST_OUTPUT=/mi/share/scratch/bull/ChasteStuff/chaste_test_output/
 chaste_test_dir = os.environ.get('CHASTE_TEST_OUTPUT')
 
 #path_to_output = os.path.join(chaste_test_dir, 'FullSimulations','DiffusionOnlyParameterSweep')
-path_to_output = os.path.join(chaste_test_dir, 'FullSimulations','Dorie1982','VaryBrownianMotion')
+path_to_output = os.path.join(chaste_test_dir, 'ParameterSweeps','Dorie1982Reproduction','VaryBrownianMotion')
 
 if not(os.path.isfile(executable)):
     raise Exception('Could not find executable: ' + executable)
 
-command_line_args = [' --ID ', ' --DC ']
-params_list = ['simulation_id', 'diffusionCoefficient']
+command_line_args = [' --ID ', ' --DC ', ' --IN ']
+params_list = ['simulation_id', 'diffusionCoefficient','iterationNumber']
 
 today = time.strftime('%Y-%m-%dT%H%M')
 
 # Param ranges (in lists, for itertools product)
-dc = np.linspace(0.0, 3.0, num=31)
+dc = np.linspace(0.0, 2.0, num=41)
+iterationNumber = np.linspace(1.0,25.0,num=25)
 
-combined_iterable = enumerate(itertools.product(dc))
+combined_iterable = enumerate(itertools.product(dc,iterationNumber))
 
 
 def main():
@@ -40,10 +42,10 @@ def run_simulations():
     if not os.path.exists(path_to_output):
     	os.makedirs(path_to_output)
     
-    params_file = open(path_to_output + '/params_file.csv', 'w')
+    params_file = open(path_to_output + '/params_file_wolverine.csv', 'w')
     params_file.write(','.join(params_list) + '\n')
 
-    base_command = 'nice -n 19 ' + executable
+    base_command = executable
 
     for idx, param_set in combined_iterable:
     
@@ -60,7 +62,7 @@ def run_simulations():
     params_file.close()
 
     # Use processes equal to the number of cpus available
-    count = multiprocessing.cpu_count()
+    count = 24#multiprocessing.cpu_count()
 
     print("Py: Starting simulations with " + str(count) + " processes")
 

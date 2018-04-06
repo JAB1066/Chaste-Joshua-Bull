@@ -88,7 +88,9 @@ double MacrophageProximityLabellingModifier<DIM>::CalculateDistanceFromMacrophag
 	const c_vector<double, DIM>& r_node_location = p_node->rGetLocation();
 	//Node<SPACE_DIM>* p_node = rCellPopulation.GetNode(nodeGlobalIndex);
 	//const c_vector<double, SPACE_DIM>& r_node_location = p_node->rGetLocation();
-	std::vector<double> distancesVector;
+
+	//std::vector<double> distancesVector;
+	double minDist = DBL_MAX;
 
 	// Iterate over cell population to find macrophages
 	for (typename AbstractCellPopulation<DIM>::Iterator cell_iter = rCellPopulation.Begin();
@@ -116,14 +118,19 @@ double MacrophageProximityLabellingModifier<DIM>::CalculateDistanceFromMacrophag
 			 */
 			difference = rCellPopulation.rGetMesh().GetVectorFromAtoB(r_node_location, r_node_b_location);
 
-			// Calculate the distance between the two nodes
-			double distance_between_nodes = norm_2(difference);
-			assert(!std::isnan(distance_between_nodes));
+			if (minDist > norm_2(difference))
+            {
+                minDist = norm_2(difference);
+            }
 
-			distancesVector.push_back(distance_between_nodes);
+			// Calculate the distance between the two nodes
+			//double distance_between_nodes = norm_2(difference);
+			//assert(!std::isnan(distance_between_nodes));
+
+			//distancesVector.push_back(distance_between_nodes);
 		}
 	}
-	return *std::min_element(distancesVector.begin(), distancesVector.end()); // Return smallest distance in vector
+	return minDist;//*std::min_element(distancesVector.begin(), distancesVector.end()); // Return smallest distance in vector
 }
 
 

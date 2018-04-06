@@ -100,7 +100,7 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 void SetupSingletons();
 void DestroySingletons();
-void SetupAndRunSimulation(std::string id_string, double diffusionCoefficient);
+void SetupAndRunSimulation(std::string id_string, double diffusionCoefficient, double iterationNumber);
 void OutputToConsole(std::string id_string, std::string leading);
 
 int main(int argc, char *argv[])
@@ -114,7 +114,8 @@ int main(int argc, char *argv[])
 	general_options.add_options()
                     						("help", "produce help message")
 											("ID", boost::program_options::value<std::string>(),"ID string for the simulation")
-											("DC", boost::program_options::value<double>()->default_value(0.2),"diffusionCoefficient: Coefficient D determing strength of Brownian Motion");
+											("DC", boost::program_options::value<double>()->default_value(0.2),"diffusionCoefficient: Coefficient D determing strength of Brownian Motion")
+											("IN", boost::program_options::value<double>()->default_value(1.0),"iterationNumber: No effect");
 
 	// Define parse command line into variables_map
 	boost::program_options::variables_map variables_map;
@@ -131,11 +132,12 @@ int main(int argc, char *argv[])
 	// Get ID and name from command line
 	std::string id_string = variables_map["ID"].as<std::string>();
 	double diffusionCoefficient = variables_map["DC"].as<double>();
+	double iterationNumber = variables_map["IN"].as<double>();
 
 	OutputToConsole(id_string, "Started");
 
 	SetupSingletons();
-	SetupAndRunSimulation(id_string,diffusionCoefficient);
+	SetupAndRunSimulation(id_string,diffusionCoefficient,iterationNumber);
 	DestroySingletons();
 
 	OutputToConsole(id_string, "Completed");
@@ -170,7 +172,7 @@ void OutputToConsole(std::string id_string, std::string leading)
 	std::cout << message.str() << std::flush;
 }
 
-void SetupAndRunSimulation(std::string id_string, double diffusionCoefficient)
+void SetupAndRunSimulation(std::string id_string, double diffusionCoefficient, double iterationNumber)
 {
 	{
 		// In previous tests, hypoxic cells continue their cell cycle until they reach the G1 phase. Here, we modify the cell cycle to cause them to freeze wherever they are in their cell cycle.
@@ -182,11 +184,11 @@ void SetupAndRunSimulation(std::string id_string, double diffusionCoefficient)
 		std::vector<Node<3>*> nodes;
 		// Add some nodes
 
-		double cubeDomainDistanceToBoundary = 25;
+		double cubeDomainDistanceToBoundary = 30;
 
 		// Tumour Nodes
 		unsigned nodeNum=0;
-		double initialRadius = 9.0;
+		double initialRadius = 12.0;
 		for (double x=-initialRadius; x<initialRadius; x++)
 		{
 			for (double y=-initialRadius; y<initialRadius; y++)
@@ -267,8 +269,7 @@ void SetupAndRunSimulation(std::string id_string, double diffusionCoefficient)
 
 		// Make cell pointers
 		std::vector<CellPtr> cells;
-		//MAKE_PTR(WildTypeCellMutationState, p_state);
-		boost::shared_ptr<AbstractCellMutationState> p_state(new WildTypeCellMutationState);
+		MAKE_PTR(WildTypeCellMutationState, p_state);
 		MAKE_PTR(StemCellProliferativeType, p_stem_type);
 		MAKE_PTR(MacrophageCellProliferativeType, p_macrophage_type);
 
@@ -278,21 +279,17 @@ void SetupAndRunSimulation(std::string id_string, double diffusionCoefficient)
 		{
 			SimpleOxygenBasedCellCycleModelFreezeWhenHypoxic* p_model = new SimpleOxygenBasedCellCycleModelFreezeWhenHypoxic;
 			p_model->SetDimension(3);
-			//p_model->SetQuiescentConcentration(0.8); // Arbitrary
-			//p_model->SetHypoxicConcentration(0.7); // Arbitrary
 
 			CellPtr p_cell(new Cell(p_state, p_model));
 			p_cell->SetCellProliferativeType(p_stem_type);
 			p_cell->GetCellData()->SetItem("oxygen", 1.0);
-			p_cell->GetCellData()->SetItem("csf1", 1.0);
 
-			p_model->SetStemCellG1Duration(8.0);
-			p_model->SetTransitCellG1Duration(8.0);
+			p_model->SetTransitCellG1Duration(4.0);
 
 			p_model->SetStemCellG1Duration(4.0);
 			p_model->SetHypoxicConcentration(0.15);
 			p_model->SetQuiescentConcentration(0.35);
-			p_model->SetCriticalHypoxicDuration(8);//was 8
+			p_model->SetCriticalHypoxicDuration(4);
 
 			double birth_time = - RandomNumberGenerator::Instance()->ranf() *
 					(  p_model->GetStemCellG1Duration()
@@ -309,7 +306,6 @@ void SetupAndRunSimulation(std::string id_string, double diffusionCoefficient)
 
 			CellPtr p_cell(new Cell(p_state, p_model2));
 			p_cell->SetCellProliferativeType(p_macrophage_type);
-			p_cell->GetCellData()->SetItem("csf1", 1.0);
 
 			cells.push_back(p_cell);
 		}
@@ -318,9 +314,7 @@ void SetupAndRunSimulation(std::string id_string, double diffusionCoefficient)
 		NodeBasedCellPopulation<3> cell_population(mesh, cells);
 		cell_population.AddPopulationWriter<NodeLocationWriter>();
 		// Write summary statistic files
-		//cell_population.AddCellPopulationCountWriter<CellMutationStatesCountWriter>();
 		cell_population.AddCellPopulationCountWriter<CellProliferativeTypesCountWriter>();
-		//cell_population.AddCellWriter<CellMutationStatesWriter>();
 		cell_population.AddCellWriter<CellProliferativeTypesWriter>();
 
 		// Make PDE (Oxygen)
@@ -346,9 +340,9 @@ void SetupAndRunSimulation(std::string id_string, double diffusionCoefficient)
 		simulator.AddSimulationModifier(p_pde_modifier);
 		std::stringstream output_directory;
 		//output_directory << "FullSimulations/DiffusionOnlyParameterSweep/" << id_string;
-		output_directory << "FullSimulations/Dorie1982/VaryBrownianMotion/" << id_string;
+		output_directory << "ParameterSweeps/Dorie1982Reproduction/VaryBrownianMotion/" << id_string << "_wolverine";
 		simulator.SetOutputDirectory(output_directory.str());
-		simulator.SetSamplingTimestepMultiple(12);//12);
+		simulator.SetSamplingTimestepMultiple(60);
 		simulator.SetEndTime(96.0);
 
 		// Add periodic boundary conditions for cells
