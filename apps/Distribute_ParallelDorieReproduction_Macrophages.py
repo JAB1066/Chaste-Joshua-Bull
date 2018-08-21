@@ -6,16 +6,16 @@ import time
 
 import numpy as np
 
-executable = '/mi/share/scratch/bull/ChasteStuff/chaste-release/projects/JoshuaBull/apps/Exe_ParallelDorieReproduction_Microspheres'
+executable = '/mi/share/scratch/bull/ChasteStuff/chaste-release/projects/JoshuaBull/apps/Exe_ParallelDorieReproduction_Macrophages'
 
 chaste_test_dir = os.environ.get('CHASTE_TEST_OUTPUT')
-path_to_output = os.path.join(chaste_test_dir,'ParameterSweeps','DorieReproduction','Microspheres','Jun_21')
+path_to_output = os.path.join(chaste_test_dir,'ParameterSweeps','DorieReproduction','MacrophageChemotaxisAndAddingTime','Aug_9')
 
 if not(os.path.isfile(executable)):
     raise Exception('Could not find executable: ' + executable)
 
-command_line_args = [' --ID ', ' --ACCL ', ' --HC ', ' --QC ', ' --CHD ',' --AD ',' --OCR ',' --IT ']
-params_list = ['simulation_id', 'averageCellCycleLength', 'hypoxicConcentration', 'quiescentConcentration', 'criticalHypoxicDuration','apoptosisDuration','oxygenConsumptionRate', 'iterationNumber']
+command_line_args = [' --ID ', ' --CC ', ' --ACCL ', ' --HC ', ' --QC ', ' --CHD ',' --AD ',' --OCR ',' --TTAM ',' --IT ']
+params_list = ['simulation_id', 'chemotaxisCoefficient', 'averageCellCycleLength', 'hypoxicConcentration', 'quiescentConcentration', 'criticalHypoxicDuration','apoptosisDuration','oxygenConsumptionRate','timeToAddMacrophages', 'iterationNumber']
 
 today = time.strftime('%Y-%m-%dT%H%M')
 
@@ -27,17 +27,19 @@ today = time.strftime('%Y-%m-%dT%H%M')
 #ad = np.linspace(48.0, 48.0, num=1)
 #ocr = np.linspace(0.03, 0.03, num=1)
 #it = np.linspace(1, 10, num=10)
-accl = np.linspace(8, 32, num=7)
+cc = np.linspace(0, 10.0, num=5)
+accl = np.linspace(16, 32, num=3)
 hc = np.linspace(0.3, 0.3, num=1)
-qc = np.linspace(0.3, 0.7, num=5)
+qc = np.linspace(0.3, 0.7, num=3)
 chd = np.linspace(8.0, 8.0, num=1)
 ad = np.linspace(48.0, 48.0, num=1)
 ocr = np.linspace(0.03, 0.03, num=1)
-it = np.linspace(1, 10, num=10)
+ttam = np.linspace(100, 300, num=5)
+it = np.linspace(11, 15, num=5)
 
 
-combined_iterable = enumerate(itertools.product(accl,hc,qc,chd,ad,ocr,it))
-shift = 480*11 # For running large param sweeps, specify an offset if needed
+combined_iterable = enumerate(itertools.product(cc,accl,hc,qc,chd,ad,ocr,ttam,it))
+shift = 4125 # For running large param sweeps, specify an offset if needed
 
 def main():
     run_simulations()
@@ -52,7 +54,8 @@ def run_simulations():
     if not os.path.exists(path_to_output):
     	os.makedirs(path_to_output)
     
-    params_file = open(path_to_output + '/params_file.csv', 'w')
+    params_file = open(path_to_output + '/params_file_nightcrawler_Aug12.csv', 'w')
+    print("Parameter file created at path: " + path_to_output + '/params_file_nightcrawler_Aug12.csv')
     params_file.write(','.join(params_list) + '\n')
 
     base_command = 'nice ' + executable

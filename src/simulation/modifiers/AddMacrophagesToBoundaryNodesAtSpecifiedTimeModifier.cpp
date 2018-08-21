@@ -33,7 +33,7 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
  */
 
-#include "AddMacrophagesAtSpecifiedTimeModifier.hpp"
+#include "AddMacrophagesToBoundaryNodesAtSpecifiedTimeModifier.hpp"
 #include "SmartPointers.hpp"
 #include "NoCellCycleModel.hpp"
 #include "NodeBasedCellPopulation.hpp"
@@ -44,7 +44,7 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "NodesOnlyMesh.hpp"
 
 template<unsigned DIM>
-AddMacrophagesAtSpecifiedTimeModifier<DIM>::AddMacrophagesAtSpecifiedTimeModifier()
+AddMacrophagesToBoundaryNodesAtSpecifiedTimeModifier<DIM>::AddMacrophagesToBoundaryNodesAtSpecifiedTimeModifier()
 : AbstractCellBasedSimulationModifier<DIM>(),
   timeToAddMacrophages(0.0),
   numberOfMacrophagesToAdd(100),
@@ -54,54 +54,54 @@ AddMacrophagesAtSpecifiedTimeModifier<DIM>::AddMacrophagesAtSpecifiedTimeModifie
   }
 
 template<unsigned DIM>
-AddMacrophagesAtSpecifiedTimeModifier<DIM>::~AddMacrophagesAtSpecifiedTimeModifier()
+AddMacrophagesToBoundaryNodesAtSpecifiedTimeModifier<DIM>::~AddMacrophagesToBoundaryNodesAtSpecifiedTimeModifier()
 {
 }
 
 template<unsigned DIM>
-void AddMacrophagesAtSpecifiedTimeModifier<DIM>::UpdateAtEndOfTimeStep(AbstractCellPopulation<DIM,DIM>& rCellPopulation)
+void AddMacrophagesToBoundaryNodesAtSpecifiedTimeModifier<DIM>::UpdateAtEndOfTimeStep(AbstractCellPopulation<DIM,DIM>& rCellPopulation)
 {
 	UpdateCellData(rCellPopulation);
 }
 
 template<unsigned DIM>
-double AddMacrophagesAtSpecifiedTimeModifier<DIM>::GetTimeToAddMacrophages()
+double AddMacrophagesToBoundaryNodesAtSpecifiedTimeModifier<DIM>::GetTimeToAddMacrophages()
 {
 	return timeToAddMacrophages;
 }
 
 template<unsigned DIM>
-void AddMacrophagesAtSpecifiedTimeModifier<DIM>::SetTimeToAddMacrophages(double newTimeToAddMacrophages)
+void AddMacrophagesToBoundaryNodesAtSpecifiedTimeModifier<DIM>::SetTimeToAddMacrophages(double newTimeToAddMacrophages)
 {
 	timeToAddMacrophages = newTimeToAddMacrophages;
 }
 
 template<unsigned DIM>
-unsigned AddMacrophagesAtSpecifiedTimeModifier<DIM>::GetNumberOfMacrophagesToAdd()
+unsigned AddMacrophagesToBoundaryNodesAtSpecifiedTimeModifier<DIM>::GetNumberOfMacrophagesToAdd()
 {
 	return numberOfMacrophagesToAdd;
 }
 
 template<unsigned DIM>
-void AddMacrophagesAtSpecifiedTimeModifier<DIM>::SetNumberOfMacrophagesToAdd(unsigned newNumberOfMacrophagesToAdd)
+void AddMacrophagesToBoundaryNodesAtSpecifiedTimeModifier<DIM>::SetNumberOfMacrophagesToAdd(unsigned newNumberOfMacrophagesToAdd)
 {
 	numberOfMacrophagesToAdd = newNumberOfMacrophagesToAdd;
 }
 
 template<unsigned DIM>
-unsigned AddMacrophagesAtSpecifiedTimeModifier<DIM>::GetNumberOfHoursToRunSimulationAfterAddingMacrophages()
+unsigned AddMacrophagesToBoundaryNodesAtSpecifiedTimeModifier<DIM>::GetNumberOfHoursToRunSimulationAfterAddingMacrophages()
 {
 	return numberOfHoursToRunSimulationAfterAddingMacrophages;
 }
 
 template<unsigned DIM>
-void AddMacrophagesAtSpecifiedTimeModifier<DIM>::SetNumberOfHoursToRunSimulationAfterAddingMacrophages(unsigned newNumberOfHoursToRunSimulationAfterAddingMacrophages)
+void AddMacrophagesToBoundaryNodesAtSpecifiedTimeModifier<DIM>::SetNumberOfHoursToRunSimulationAfterAddingMacrophages(unsigned newNumberOfHoursToRunSimulationAfterAddingMacrophages)
 {
 	numberOfHoursToRunSimulationAfterAddingMacrophages = newNumberOfHoursToRunSimulationAfterAddingMacrophages;
 }
 
 template<unsigned DIM>
-void AddMacrophagesAtSpecifiedTimeModifier<DIM>::SetupSolve(AbstractCellPopulation<DIM,DIM>& rCellPopulation, std::string outputDirectory)
+void AddMacrophagesToBoundaryNodesAtSpecifiedTimeModifier<DIM>::SetupSolve(AbstractCellPopulation<DIM,DIM>& rCellPopulation, std::string outputDirectory)
 {
 	/*
 	 * We must update CellData in SetupSolve(), otherwise it will not have been
@@ -113,7 +113,7 @@ void AddMacrophagesAtSpecifiedTimeModifier<DIM>::SetupSolve(AbstractCellPopulati
 
 
 template<unsigned DIM>
-void AddMacrophagesAtSpecifiedTimeModifier<DIM>::UpdateCellData(AbstractCellPopulation<DIM,DIM>& rCellPopulation)
+void AddMacrophagesToBoundaryNodesAtSpecifiedTimeModifier<DIM>::UpdateCellData(AbstractCellPopulation<DIM,DIM>& rCellPopulation)
 {
 	// Make sure the cell population is updated
 	rCellPopulation.Update();
@@ -125,101 +125,110 @@ void AddMacrophagesAtSpecifiedTimeModifier<DIM>::UpdateCellData(AbstractCellPopu
 	{
 		auto nbcp = dynamic_cast<NodeBasedCellPopulation<DIM>* >(&rCellPopulation);
 
-		/*
-		 * Now we add our macrophages
-		 */
-		//unsigned nodeNum = rCellPopulation.GetNumNodes();
-
-		std::list<CellPtr> tumour_cells = rCellPopulation.rGetCells();
-		std::list<CellPtr>::iterator it;
-		double macrophageSphereRadius = 0;
-		for (it = tumour_cells.begin(); it != tumour_cells.end(); it++)
+		std::vector<c_vector<double, DIM> > boundaryCellLocations;
+		for (typename AbstractMesh<DIM, DIM>::NodeIterator node_iter = rCellPopulation.rGetMesh().GetNodeIteratorBegin();
+				node_iter != rCellPopulation.rGetMesh().GetNodeIteratorEnd();
+				++node_iter)
 		{
-			double radius = 0;
-			c_vector<double, DIM> location = rCellPopulation.GetLocationOfCellCentre(*it);
-			for (unsigned i=0; i<DIM; i++)
+			if(node_iter->IsBoundaryNode())
 			{
-				radius += pow(location[i]-centroid[i],2);
-			}
-			if(radius > macrophageSphereRadius)
-			{
-				macrophageSphereRadius = radius;
+				c_vector<double, DIM> location = node_iter->rGetLocation();
+				boundaryCellLocations.push_back(location);
 			}
 		}
 
-		// Macrophage Nodes - in a shell at fixed radius
-		// Number of Macrophages remains constant throughout simulation
 
+		/*
+		 * We randomly select boundary nodes, and try to add a macrophage somewhere around it on the outside of the tumour
+		 */
 		unsigned macCount=0;
 		double random_x;
 		double random_y;
 		double random_z;
 		double normalize;
-		macrophageSphereRadius =  std::sqrt(macrophageSphereRadius) + 0.5;
-
-
-		MAKE_PTR(MacrophageCellProliferativeType, p_macrophage_type);
-		MAKE_PTR(WildTypeCellMutationState, p_state);
-
-		// Add nodes at random points at edge of spheroid
 		while(macCount < numberOfMacrophagesToAdd)
 		{
+			// Choose a random boundary location
+			c_vector<double, DIM> boundaryLocation = boundaryCellLocations[RandomNumberGenerator::Instance()->randMod(boundaryCellLocations.size())];
+
+			// Make a perturbation
+			c_vector<double, DIM> perturbation;
 
 			random_x = RandomNumberGenerator::Instance()->StandardNormalRandomDeviate();
 			random_y = RandomNumberGenerator::Instance()->StandardNormalRandomDeviate();
 			if(DIM == 2)
 			{
-				normalize = macrophageSphereRadius/sqrt(pow(random_x,2) + pow(random_y,2));
+				normalize = 1/sqrt(pow(random_x,2) + pow(random_y,2));
 			}
 			if(DIM == 3)
 			{
 				random_z = RandomNumberGenerator::Instance()->StandardNormalRandomDeviate();
-				normalize = macrophageSphereRadius/sqrt(pow(random_x,2) + pow(random_y,2)+ pow(random_z,2));
+				normalize = 1/sqrt(pow(random_x,2) + pow(random_y,2)+ pow(random_z,2));
 			}
 
-			// Make vectors lie on sphere of radiusmacrophageSphereRadius centred at centroid
-
-			// Make Macrophage
-			NoCellCycleModel* p_model = new NoCellCycleModel;
-			p_model->SetDimension(DIM);
-			CellPtr pNewCell(new Cell(p_state, p_model));
-			pNewCell->SetCellProliferativeType(p_macrophage_type);
-			pNewCell->GetCellData()->SetItem("oxygen", 1);
-			pNewCell->GetCellData()->SetItem("csf1", 0);
-			pNewCell->GetCellData()->SetItem("csf1_grad_x",0);
-			pNewCell->GetCellData()->SetItem("csf1_grad_y",0);
-			pNewCell->GetCellData()->SetItem("csf1_grad_z",0);
-
-			//node = new Node<3>(nodeNum,  false,  random_x*normalize, random_y*normalize, random_z*normalize);
-
-			// 10000 here is a placeholder - it should be overwritten when we add the node to the nbcp...I hope
-			Node<DIM>* p_new_node;
-			if(DIM == 1)
+			// Calculate vector away from centre (n)
+			double perturbationSize = 0;
+			double normalSize = 0;
+			double normalDotPerturbation = 0;
+			c_vector<double, DIM> normal;
+			for (unsigned i=0; i<DIM; i++)
 			{
-				p_new_node = new Node<DIM>(100000,  false,  random_x*normalize+centroid[0]);
+				perturbation[i] = RandomNumberGenerator::Instance()->StandardNormalRandomDeviate();
+				normal[i] = boundaryLocation[i] - centroid[i];
+
+				normalDotPerturbation += perturbation[i]*normal[i];
+
+				normalSize += pow(normal[i],2);
+				perturbationSize += pow(perturbation[i],2);
 			}
-			if(DIM == 2)
+			perturbationSize = sqrt(perturbationSize);
+			normalSize = sqrt(normalSize);
+
+			// If the angle between the perturbation and the normal is less than pi/2, then we can try to place the macrophage (as outside the sphere)
+			double theta = normalDotPerturbation/(perturbationSize*normalSize);
+			if(theta < M_PI/2)
 			{
-				p_new_node = new Node<DIM>(100000,  false,  random_x*normalize+centroid[0], random_y*normalize+centroid[1]);
+				MAKE_PTR(MacrophageCellProliferativeType, p_macrophage_type);
+				MAKE_PTR(WildTypeCellMutationState, p_state);
+
+				// Make Macrophage
+				NoCellCycleModel* p_model = new NoCellCycleModel;
+				p_model->SetDimension(DIM);
+				CellPtr pNewCell(new Cell(p_state, p_model));
+				pNewCell->SetCellProliferativeType(p_macrophage_type);
+				pNewCell->GetCellData()->SetItem("oxygen", 1);
+
+
+				// 10000 here is a placeholder - it should be overwritten when we add the node to the nbcp...I hope
+				Node<DIM>* p_new_node;
+				if(DIM == 1)
+				{
+					p_new_node = new Node<DIM>(100000,  false,  boundaryLocation[0]+perturbation[0]/perturbationSize);
+				}
+				if(DIM == 2)
+				{
+					p_new_node = new Node<DIM>(100000,  false,  boundaryLocation[0]+perturbation[0]/perturbationSize, boundaryLocation[1]+perturbation[1]/perturbationSize);
+				}
+				if(DIM == 3)
+				{
+					p_new_node = new Node<DIM>(100000,  false,  boundaryLocation[0]+perturbation[0]/perturbationSize, boundaryLocation[1]+perturbation[1]/perturbationSize, boundaryLocation[2]+perturbation[2]/perturbationSize);
+				}
+
+				p_new_node->ClearAppliedForce(); // Incase velocity is ouptut on the same timestep as the cell has divided
+				p_new_node->SetRadius(0.5*0.75); // Beads are much smaller than cells
+				//NodesOnlyMesh<3> mesh = nbcp->rGetMesh();
+				unsigned new_node_index = nbcp->rGetMesh().AddNode(p_new_node);
+
+				// Update cells vector
+				nbcp->rGetCells().push_back(pNewCell);
+
+				// Update mappings between cells and location indices
+				nbcp->SetCellUsingLocationIndex(new_node_index, pNewCell);
+
+				macCount++;
+
 			}
-			if(DIM == 3)
-			{
-				p_new_node = new Node<DIM>(100000,  false,  random_x*normalize+centroid[0], random_y*normalize+centroid[1], random_z*normalize+centroid[2]);
-			}
 
-			p_new_node->ClearAppliedForce(); // Incase velocity is ouptut on the same timestep as the cell has divided
-			p_new_node->SetRadius(0.5); // Beads are approx 75% the size of cells - 15mum diameter in Dorie 1982. For simplicity, we keep them the same size.
-			//NodesOnlyMesh<3> mesh = nbcp->rGetMesh();
-			unsigned new_node_index = nbcp->rGetMesh().AddNode(p_new_node);
-
-
-			// Update cells vector
-			nbcp->rGetCells().push_back(pNewCell);
-
-			// Update mappings between cells and location indices
-			nbcp->SetCellUsingLocationIndex(new_node_index, pNewCell);
-
-			macCount++;
 		}
 
 		// Now ensure that we don't add macrophages again
@@ -249,7 +258,7 @@ void AddMacrophagesAtSpecifiedTimeModifier<DIM>::UpdateCellData(AbstractCellPopu
 }
 
 template<unsigned DIM>
-void AddMacrophagesAtSpecifiedTimeModifier<DIM>::OutputSimulationModifierParameters(out_stream& rParamsFile)
+void AddMacrophagesToBoundaryNodesAtSpecifiedTimeModifier<DIM>::OutputSimulationModifierParameters(out_stream& rParamsFile)
 {
 
 	*rParamsFile << "\t\t\t<timeToAddMacrophages>" << timeToAddMacrophages << "</timeToAddMacrophages>\n";
@@ -262,11 +271,11 @@ void AddMacrophagesAtSpecifiedTimeModifier<DIM>::OutputSimulationModifierParamet
 }
 
 // Explicit instantiation
-template class AddMacrophagesAtSpecifiedTimeModifier<1>;
-template class AddMacrophagesAtSpecifiedTimeModifier<2>;
-template class AddMacrophagesAtSpecifiedTimeModifier<3>;
+template class AddMacrophagesToBoundaryNodesAtSpecifiedTimeModifier<1>;
+template class AddMacrophagesToBoundaryNodesAtSpecifiedTimeModifier<2>;
+template class AddMacrophagesToBoundaryNodesAtSpecifiedTimeModifier<3>;
 
 // Serialization for Boost >= 1.36
 #include "SerializationExportWrapperForCpp.hpp"
-EXPORT_TEMPLATE_CLASS_SAME_DIMS(AddMacrophagesAtSpecifiedTimeModifier)
+EXPORT_TEMPLATE_CLASS_SAME_DIMS(AddMacrophagesToBoundaryNodesAtSpecifiedTimeModifier)
 

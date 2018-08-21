@@ -33,49 +33,64 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
  */
 
-#include "ExternalPressureForce.hpp"
+#include "ExternalPressureForceOnConcaveHull.hpp"
+#include "MacrophageCellProliferativeType.hpp"
+#include "AbstractCellProliferativeType.hpp"
 
 template<unsigned DIM>
-ExternalPressureForce<DIM>::ExternalPressureForce()
+ExternalPressureForceOnConcaveHull<DIM>::ExternalPressureForceOnConcaveHull()
 : AbstractForce<DIM>(),
   mPressure(1.0),
-  mIsForceDirectedTowardsOrigin(true)
+  mIsForceDirectedTowardsOrigin(true),
+  mAlpha(1.0)
   {
   }
 
 template<unsigned DIM>
-ExternalPressureForce<DIM>::~ExternalPressureForce()
+ExternalPressureForceOnConcaveHull<DIM>::~ExternalPressureForceOnConcaveHull()
 {
 }
 
 template<unsigned DIM>
-double ExternalPressureForce<DIM>::GetPressure()
+double ExternalPressureForceOnConcaveHull<DIM>::GetPressure()
 {
 	return mPressure;
 }
 
 template<unsigned DIM>
-void ExternalPressureForce<DIM>::SetPressure(double newPressure)
+void ExternalPressureForceOnConcaveHull<DIM>::SetPressure(double newPressure)
 {
 	assert(newPressure > 0);
 	mPressure = newPressure;
 }
 
 template<unsigned DIM>
-bool ExternalPressureForce<DIM>::GetIsForceDirectedTowardsOrigin()
+bool ExternalPressureForceOnConcaveHull<DIM>::GetIsForceDirectedTowardsOrigin()
 {
 	return mIsForceDirectedTowardsOrigin;
 }
 
 template<unsigned DIM>
-void ExternalPressureForce<DIM>::SetIsForceDirectedTowardsOrigin(bool newIsForceDirectedTowardsOrigin)
+void ExternalPressureForceOnConcaveHull<DIM>::SetIsForceDirectedTowardsOrigin(bool newIsForceDirectedTowardsOrigin)
 {
 	mIsForceDirectedTowardsOrigin = newIsForceDirectedTowardsOrigin;
 }
 
+template<unsigned DIM>
+double ExternalPressureForceOnConcaveHull<DIM>::GetAlpha()
+{
+	return mAlpha;
+}
 
 template<unsigned DIM>
-void ExternalPressureForce<DIM>::AddForceContribution(AbstractCellPopulation<DIM>& rCellPopulation)
+void ExternalPressureForceOnConcaveHull<DIM>::SetAlpha(double newAlpha)
+{
+	mAlpha = newAlpha;
+}
+
+
+template<unsigned DIM>
+void ExternalPressureForceOnConcaveHull<DIM>::AddForceContribution(AbstractCellPopulation<DIM>& rCellPopulation)
 {
 
 	c_vector<double, DIM> force_contribution;
@@ -91,79 +106,14 @@ void ExternalPressureForce<DIM>::AddForceContribution(AbstractCellPopulation<DIM
 	}
 
 	for (typename AbstractMesh<DIM, DIM>::NodeIterator node_iter = rCellPopulation.rGetMesh().GetNodeIteratorBegin();
-				node_iter != rCellPopulation.rGetMesh().GetNodeIteratorEnd();
-				++node_iter)
-		{
-
-			// We make a hack to determine cells near the boundary. Since boundary nodes have oxygen concentration = 1.0,
-			// any node which has that must be near the boundary. Yup, it's crude...can't find a better way, sorry!
-			// This method is basically taken from AbstractBoxDomainPdeModifier
-
-			// Get cell
-			unsigned index = node_iter->GetIndex();
-
-			CellPtr p_cell = rCellPopulation.GetCellUsingLocationIndex(index);
-
-			//double oxygenLevel = p_cell->GetCellData()->GetItem("oxygen");
-
-			if( node_iter->IsBoundaryNode())
-			{
-				// Pressure is force per (cell diameter)^2
-				// Force is to be applied towards the origin, radially
-				c_vector<double, DIM> cell_location = rCellPopulation.GetLocationOfCellCentre(p_cell);
-				c_vector<double, DIM> force_contribution;
-				force_contribution.clear();
-
-				c_vector<double, DIM> vectorToCentroid = rCellPopulation.rGetMesh().GetVectorFromAtoB(cell_location, centroid);
-
-				double cellRadialDistanceFromCentroid = 0;
-				for (unsigned i=0; i<DIM; i++)
-				{
-					cellRadialDistanceFromCentroid+= vectorToCentroid[i]*vectorToCentroid[i];
-				}
-				cellRadialDistanceFromCentroid = sqrt(cellRadialDistanceFromCentroid);
-
-				for (unsigned i=0; i<DIM; i++)
-				{
-					// We need force to be proportional to radius^2 to maintain density of cells
-					//force_contribution[i] = cellRadialDistanceFromCentroid*cellRadialDistanceFromCentroid*( vectorToCentroid[i]/cellRadialDistanceFromCentroid ) * ( mPressure/pow(2*(node_iter->GetRadius()),2) ); // force = pressure / (cell diameter)^2
-					force_contribution[i] = ( vectorToCentroid[i]/cellRadialDistanceFromCentroid ) * ( mPressure/pow(2*(node_iter->GetRadius()),2) ); // force = pressure / (cell diameter)^2
-				}
-
-				node_iter->AddAppliedForceContribution(force_contribution);
-			}
-			else
-			{
-				// Do nothing
-				//node_iter->ClearAppliedForce();
-			}
-		}
-
-
-
-/*
-	for (typename AbstractMesh<DIM, DIM>::NodeIterator node_iter = rCellPopulation.rGetMesh().GetNodeIteratorBegin();
 			node_iter != rCellPopulation.rGetMesh().GetNodeIteratorEnd();
 			++node_iter)
 	{
-
-		// We make a hack to determine cells near the boundary. Since boundary nodes have oxygen concentration = 1.0,
-		// any node which has that must be near the boundary. Yup, it's crude...can't find a better way, sorry!
-		// This method is basically taken from AbstractBoxDomainPdeModifier
-
-		// Get cell
-		unsigned index = node_iter->GetIndex();
-		CellPtr p_cell = rCellPopulation.GetCellUsingLocationIndex(index);
-
-		double oxygenLevel = p_cell->GetCellData()->GetItem("oxygen");
-
-		if( oxygenLevel > 0.99)
+		// If node is a boundary node, add force in direction of centroid
+		// Note - this is set in EllipticBoxDomainPdeModifierVariableTimestep - if you're not using that to find the alpha shape, it won't work!
+		if( node_iter->IsBoundaryNode())
 		{
-			// Pressure is force per (cell diameter)^2
-			// Force is to be applied towards the origin, radially
-			c_vector<double, DIM> cell_location = rCellPopulation.GetLocationOfCellCentre(p_cell);
-			c_vector<double, DIM> force_contribution;
-
+			c_vector<double, DIM> cell_location = node_iter->rGetLocation();
 			c_vector<double, DIM> vectorToCentroid = rCellPopulation.rGetMesh().GetVectorFromAtoB(cell_location, centroid);
 
 			double cellRadialDistanceFromCentroid = 0;
@@ -181,33 +131,27 @@ void ExternalPressureForce<DIM>::AddForceContribution(AbstractCellPopulation<DIM
 			}
 
 			node_iter->AddAppliedForceContribution(force_contribution);
+
 		}
-		else
-		{
-			// Do nothing
-			//node_iter->ClearAppliedForce();
-		}
-
-
-
-	}*/
+	}
 
 }
 
 template<unsigned DIM>
-void ExternalPressureForce<DIM>::OutputForceParameters(out_stream& rParamsFile)
+void ExternalPressureForceOnConcaveHull<DIM>::OutputForceParameters(out_stream& rParamsFile)
 {
 	*rParamsFile << "\t\t\t<mPressure>" << mPressure << "</mPressure> \n";
+	*rParamsFile << "\t\t\t<mAlpha>" << mAlpha << "</mAlpha> \n";
 
 	// Call direct parent class
 	AbstractForce<DIM>::OutputForceParameters(rParamsFile);
 }
 
 // Explicit instantiation
-template class ExternalPressureForce<1>;
-template class ExternalPressureForce<2>;
-template class ExternalPressureForce<3>;
+template class ExternalPressureForceOnConcaveHull<1>;
+template class ExternalPressureForceOnConcaveHull<2>;
+template class ExternalPressureForceOnConcaveHull<3>;
 
 // Serialization for Boost >= 1.36
 #include "SerializationExportWrapperForCpp.hpp"
-EXPORT_TEMPLATE_CLASS_SAME_DIMS(ExternalPressureForce)
+EXPORT_TEMPLATE_CLASS_SAME_DIMS(ExternalPressureForceOnConcaveHull)

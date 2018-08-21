@@ -79,7 +79,7 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "BoundaryNodeWriter.hpp"
 
 #include "ExternalPressureForceOnConcaveHull.hpp"
-#include "AddMacrophagesAtSpecifiedTimeModifier.hpp"
+#include "LabelBoundaryCellsAtSpecifiedTimeModifier.hpp"
 
 #include "CuboidPeriodicBoundaryCondition.hpp"
 
@@ -204,7 +204,7 @@ void SetupAndRunSimulation(std::string id_string, double averageCellCycleLength,
 		std::vector<Node<DIM>*> nodes;
 
 		double simDuration = 400;
-		double timeToAddMacrophages = 300;
+		double timeToLabelCells = 300;
 
 
 		if(hypoxicConcentration > quiescentConcentration)
@@ -216,7 +216,7 @@ void SetupAndRunSimulation(std::string id_string, double averageCellCycleLength,
 
 		// Add some nodes
 
-		double cubeDomainDistanceToBoundary = 100;//50;
+		double cubeDomainDistanceToBoundary = 50;
 
 		// Tumour Nodes
 		unsigned nodeNum=0;
@@ -316,17 +316,17 @@ void SetupAndRunSimulation(std::string id_string, double averageCellCycleLength,
 		OffLatticeSimulation<DIM> simulator(cell_population);
 		simulator.AddSimulationModifier(p_pde_modifier);
 		std::stringstream output_directory;
-		output_directory << "ParameterSweeps/DorieReproduction/Microspheres/Jun_21/" << id_string << "/";
+		output_directory << "ParameterSweeps/DorieReproduction/LabelledCells/Jun_11/" << id_string << "/";
 		simulator.SetOutputDirectory(output_directory.str());
 		simulator.SetSamplingTimestepMultiple(4*120); // Every 4 hours
 		simulator.SetEndTime(simDuration);
 
 		// Add macrophages at set time
-		MAKE_PTR(AddMacrophagesAtSpecifiedTimeModifier<DIM>, p_addMacs_modifier);
-		p_addMacs_modifier->SetNumberOfMacrophagesToAdd(100);
-		p_addMacs_modifier->SetTimeToAddMacrophages(timeToAddMacrophages);
+		MAKE_PTR(LabelBoundaryCellsAtSpecifiedTimeModifier<DIM>, p_labelCells_modifier);
+		p_labelCells_modifier->SetNumberOfCellsToLabel(50);
+		p_labelCells_modifier->SetTimeToLabelCells(timeToLabelCells);
 		//p_addMacs_modifier->SetNumberOfHoursToRunSimulationAfterAddingMacrophages(250);
-		simulator.AddSimulationModifier(p_addMacs_modifier);
+		simulator.AddSimulationModifier(p_labelCells_modifier);
 
 
 		// Create an output modifier - set SamplingTimestepMultiple below to UINT_MAX

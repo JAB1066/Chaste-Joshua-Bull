@@ -63,7 +63,9 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "Debug.hpp"
 
 #include "AveragedSourceEllipticPde.hpp"
+#include "AveragedSourceEllipticPdeOxygenBelowThreshold.hpp"
 #include "UniformSourceEllipticPde.hpp"
+#include "EllipticBoxDomainPdeModifier.hpp"
 #include "EllipticBoxDomainPdeModifierVariableTimestep.hpp"
 #include "AbstractBoxDomainPdeModifier.hpp"
 #include "ApoptoticCellKiller.hpp"
@@ -83,10 +85,11 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "CuboidPeriodicBoundaryCondition.hpp"
 
-#include "OutputOnlyMacrophageSummaryStatisticsModifier.hpp"
+#include "OutputOnlyMacrophageSummaryStatisticsModifierWithCSF1.hpp"
 #include "CellBasedSimulationArchiver.hpp"
 #include "GeneralisedLinearSpringForceDifferentialAdhesionForApoptosisAndMacrophages.hpp"
 #include "UniformCellCycleModelWithQuiescence.hpp"
+#include "ChemotacticForceCSF1.hpp"
 
 #include <boost/program_options/options_description.hpp>
 #include <boost/program_options/variables_map.hpp>
@@ -100,7 +103,7 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 void SetupSingletons(unsigned seed);
 void DestroySingletons();
-void SetupAndRunSimulation(std::string id_string, double averageCellCycleLength, double hypoxicConcentration, double quiescentConcentration, double criticalHypoxicDuration, double apoptosisDuration, double oxygenConsumptionRate, double iterationNumber);
+void SetupAndRunSimulation(std::string id_string, double chemotaxisCoefficient, double averageCellCycleLength, double hypoxicConcentration, double quiescentConcentration, double criticalHypoxicDuration, double apoptosisDuration, double oxygenConsumptionRate, double timeToAddMacrophages, double iterationNumber);
 void OutputToConsole(std::string id_string, std::string leading);
 
 int main(int argc, char *argv[])
@@ -112,15 +115,17 @@ int main(int argc, char *argv[])
 	// Define command line options
 	boost::program_options::options_description general_options("This is a Chaste executable.\n");
 	general_options.add_options()
-                    																				("help", "produce help message")
-																									("ID", boost::program_options::value<std::string>(),"ID string for the simulation")
-																									("ACCL", boost::program_options::value<double>()->default_value(24.0),"averageCellCycleLength: cell cycle takes 1 hour either side of this duration")
-																									("HC", boost::program_options::value<double>()->default_value(0.15),"hypoxicConcentration: O2 conc at which cell becomes hypoxic")
-																									("QC", boost::program_options::value<double>()->default_value(0.35),"quiescentConcentration: O2 conc at which cell becomes quiescent")
-																									("CHD", boost::program_options::value<double>()->default_value(8.0),"criticalHypoxicDuration: duration cell must be hypoxic for before death")
-																									("AD", boost::program_options::value<double>()->default_value(48.0),"apoptosisDuration: duration of apoptosis")
-																									("OCR", boost::program_options::value<double>()->default_value(0.01),"oxygenConsumptionRate: amount of oxygen consumed by cell")
-																									("IT", boost::program_options::value<double>(),"Iteration Number");
+    				("help", "produce help message")
+					("ID", boost::program_options::value<std::string>(),"ID string for the simulation")
+					("CC", boost::program_options::value<double>()->default_value(1.0),"chemotaxisCoefficient: sensitivity to chemotaxis")
+					("ACCL", boost::program_options::value<double>()->default_value(24.0),"averageCellCycleLength: cell cycle takes 1 hour either side of this duration")
+					("HC", boost::program_options::value<double>()->default_value(0.15),"hypoxicConcentration: O2 conc at which cell becomes hypoxic")
+					("QC", boost::program_options::value<double>()->default_value(0.35),"quiescentConcentration: O2 conc at which cell becomes quiescent")
+					("CHD", boost::program_options::value<double>()->default_value(8.0),"criticalHypoxicDuration: duration cell must be hypoxic for before death")
+					("AD", boost::program_options::value<double>()->default_value(48.0),"apoptosisDuration: duration of apoptosis")
+					("OCR", boost::program_options::value<double>()->default_value(0.01),"oxygenConsumptionRate: amount of oxygen consumed by cell")
+					("TTAM", boost::program_options::value<double>()->default_value(300.0),"timeToAddMacrophages: time in hours at which macrophages are added")
+					("IT", boost::program_options::value<double>(),"Iteration Number");
 
 	// Define parse command line into variables_map
 	boost::program_options::variables_map variables_map;
@@ -136,12 +141,14 @@ int main(int argc, char *argv[])
 
 	// Get ID and name from command line
 	std::string id_string = variables_map["ID"].as<std::string>();
+	double chemotaxisCoefficient = variables_map["CC"].as<double>();
 	double averageCellCycleLength = variables_map["ACCL"].as<double>();
 	double hypoxicConcentration = variables_map["HC"].as<double>();
 	double quiescentConcentration = variables_map["QC"].as<double>();
 	double criticalHypoxicDuration = variables_map["CHD"].as<double>();
 	double apoptosisDuration = variables_map["AD"].as<double>();
 	double oxygenConsumptionRate = variables_map["OCR"].as<double>();
+	double timeToAddMacrophages = variables_map["TTAM"].as<double>();
 	double iterationNumber = variables_map["IT"].as<double>();
 
 
@@ -150,7 +157,7 @@ int main(int argc, char *argv[])
 	unsigned seed = static_cast<unsigned>(std::stoi(id_string));
 
 	SetupSingletons(seed);
-	SetupAndRunSimulation(id_string,averageCellCycleLength,hypoxicConcentration,quiescentConcentration,criticalHypoxicDuration,apoptosisDuration, oxygenConsumptionRate, iterationNumber);
+	SetupAndRunSimulation(id_string,chemotaxisCoefficient,averageCellCycleLength,hypoxicConcentration,quiescentConcentration,criticalHypoxicDuration,apoptosisDuration, oxygenConsumptionRate, timeToAddMacrophages, iterationNumber);
 	DestroySingletons();
 
 	OutputToConsole(id_string, "Completed");
@@ -187,24 +194,15 @@ void OutputToConsole(std::string id_string, std::string leading)
 	std::cout << message.str() << std::flush;
 }
 
-void SetupAndRunSimulation(std::string id_string, double averageCellCycleLength, double hypoxicConcentration, double quiescentConcentration, double criticalHypoxicDuration, double apoptosisDuration, double oxygenConsumptionRate, double iterationNumber)
+void SetupAndRunSimulation(std::string id_string, double chemotaxisCoefficient, double averageCellCycleLength, double hypoxicConcentration, double quiescentConcentration, double criticalHypoxicDuration, double apoptosisDuration, double oxygenConsumptionRate, double timeToAddMacrophages, double iterationNumber)
 {
 	{
-		/*
-		 * In this test, "macrophages" have no macrophage properties - they are completely inert,
-		 * with the exception of when a degree of Brownian Motion applies to the entire simulation.
-		 *
-		 * As a result, we can interpret them as inert "microspheres" a la Dorie 1982
-		 *
-		 */
-
 		const int DIM = 2;
 		// Generate Mesh:
 		// Make Vector
 		std::vector<Node<DIM>*> nodes;
 
-		double simDuration = 400;
-		double timeToAddMacrophages = 300;
+		double simDuration = timeToAddMacrophages + 100;
 
 
 		if(hypoxicConcentration > quiescentConcentration)
@@ -266,6 +264,7 @@ void SetupAndRunSimulation(std::string id_string, double averageCellCycleLength,
 			CellPtr p_cell(new Cell(p_state, p_model)); // Default cell radius is 0.5
 			p_cell->SetCellProliferativeType(p_stem_type);
 			p_cell->GetCellData()->SetItem("oxygen", 1);
+			p_cell->GetCellData()->SetItem("csf1", 0);
 			p_cell->SetApoptosisTime(apoptosisDuration); // Apoptosis time in hours - how long before a cell is removed?
 
 			double birthTime = - RandomNumberGenerator::Instance()->ranf() *
@@ -311,12 +310,29 @@ void SetupAndRunSimulation(std::string id_string, double averageCellCycleLength,
 		p_pde_modifier->SetTimestepInterval(updateIntervalForPdeInTimesteps);
 		p_pde_modifier->SetDependentVariableName("oxygen");
 		p_pde_modifier->SetBcsOnBoxBoundary(false); //was false
+
+		// Make PDE (CSF1)
+		// Assume CSF1 diffuses slower than o2 (0.2)
+		MAKE_PTR_ARGS(AveragedSourceEllipticPdeOxygenBelowThreshold<DIM>, p_pdeCSF, (cell_population, 0.01,0.2,hypoxicConcentration));
+		MAKE_PTR_ARGS(ConstBoundaryCondition<DIM>, p_bcCSF, (0.0));
+
+		bool is_neumann_bcCSF = false; // Dirichlet BCs
+		// Create a ChasteCuboid on which to base the finite element mesh used to solve the PDE
+		MAKE_PTR_ARGS(ChasteCuboid<DIM>, p_cuboidCSF, (lower, upper));
+		MAKE_PTR_ARGS(EllipticBoxDomainPdeModifierVariableTimestep<DIM>, p_pde_modifierCSF, (p_pdeCSF, p_bcCSF, is_neumann_bcCSF, p_cuboidCSF, 1.0));
+		p_pde_modifierCSF->SetTimestepInterval(updateIntervalForPdeInTimesteps);
+		p_pde_modifierCSF->SetDependentVariableName("csf1");
+		p_pde_modifierCSF->SetOutputGradient(true);
+		p_pde_modifierCSF->SetBcsOnBoxBoundary(true); //was false
+
+
 		/* We then pass in the cell population into an {{{OffLatticeSimulation}}},
 		 * (this time with dimension 3) and set the output directory, output multiple and end time. */
 		OffLatticeSimulation<DIM> simulator(cell_population);
 		simulator.AddSimulationModifier(p_pde_modifier);
+		simulator.AddSimulationModifier(p_pde_modifierCSF);
 		std::stringstream output_directory;
-		output_directory << "ParameterSweeps/DorieReproduction/Microspheres/Jun_21/" << id_string << "/";
+		output_directory << "ParameterSweeps/DorieReproduction/MacrophageChemotaxisAndAddingTime/Aug_9/" << id_string << "/";
 		simulator.SetOutputDirectory(output_directory.str());
 		simulator.SetSamplingTimestepMultiple(4*120); // Every 4 hours
 		simulator.SetEndTime(simDuration);
@@ -330,7 +346,7 @@ void SetupAndRunSimulation(std::string id_string, double averageCellCycleLength,
 
 
 		// Create an output modifier - set SamplingTimestepMultiple below to UINT_MAX
-		MAKE_PTR(OutputOnlyMacrophageSummaryStatisticsModifier<DIM>, p_macStats_modifier);
+		MAKE_PTR(OutputOnlyMacrophageSummaryStatisticsModifierWithCSF1<DIM>, p_macStats_modifier);
 		p_macStats_modifier->SetQuiescenceLevel(quiescentConcentration);
 		p_macStats_modifier->SetHypoxiaLevel(hypoxicConcentration);
 		p_macStats_modifier->SetOutputFrequencyInHours(0.5); // Every 30 minutes
@@ -341,6 +357,11 @@ void SetupAndRunSimulation(std::string id_string, double averageCellCycleLength,
 		MAKE_PTR(DiffusionForceChooseD<DIM>, p_diffusion_force);
 		p_diffusion_force->SetDiffusionScalingConstant(0.01);
 		simulator.AddForce(p_diffusion_force);
+
+		// Add Chemotaxis
+		MAKE_PTR(ChemotacticForceCSF1<DIM>, p_chemotactic_force);
+		p_chemotactic_force->SetChemotaxisSensitivity(chemotaxisCoefficient);
+		simulator.AddForce(p_chemotactic_force);
 
 
 		MAKE_PTR(GeneralisedLinearSpringForceDifferentialAdhesionForApoptosisAndMacrophages<DIM>, p_force);

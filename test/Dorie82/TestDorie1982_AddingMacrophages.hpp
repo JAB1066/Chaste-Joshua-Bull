@@ -28,6 +28,7 @@
 
 #include "AveragedSourceEllipticPde.hpp"
 #include "UniformSourceEllipticPde.hpp"
+#include "AveragedSourceEllipticPdeOxygenBelowThreshold.hpp"
 #include "EllipticBoxDomainPdeModifier.hpp"
 #include "EllipticBoxDomainPdeModifierVariableTimestep.hpp"
 #include "AveragedSourceParabolicPde.hpp"
@@ -52,15 +53,22 @@
 
 #include "AddMacrophagesAtSpecifiedSpheroidSizeModifier.hpp"
 #include "AddMacrophagesAtSpecifiedTimeModifier.hpp"
+#include "AddMacrophagesToBoundaryNodesAtSpecifiedTimeModifier.hpp"
 
 #include "ExternalPressureForceOnSurroundingSphere.hpp"
+#include "ExternalPressureForceOnConcaveHull.hpp"
 
 #include "OutputOnlyMacrophageSummaryStatisticsModifier.hpp"
+#include "OutputOnlyMacrophageSummaryStatisticsModifierWithCSF1.hpp"
 #include "GeneralisedLinearSpringForceDifferentialAdhesionForApoptosis.hpp"
 #include "GeneralisedLinearSpringForceDifferentialAdhesionForApoptosisAndMacrophages.hpp"
 #include "NodeLocationWriter.hpp"
 #include "NodeVelocityWriter.hpp"
 #include "CellVolumesWriter.hpp"
+#include "BoundaryNodeWriter.hpp"
+#include "BoundaryCellWriter.hpp"
+
+#include "ChemotacticForceCSF1.hpp"
 
 #include <boost/program_options/options_description.hpp>
 #include <boost/program_options/variables_map.hpp>
@@ -273,7 +281,7 @@ public:
 	}
 
 	void dontTestMacrophageSummaryStatsModifier() throw(Exception)
-													{
+															{
 		/*
 		 * In this test, "macrophages" have no macrophage properties - they are completely inert,
 		 * with the exception of when a degree of Brownian Motion applies to the entire simulation.
@@ -471,10 +479,10 @@ public:
 		{
 			delete nodes[i];
 		}
-													}
+															}
 
 	void dontTestMacrophageSummaryStatsModifierBigSpheroid() throw(Exception)
-													{
+															{
 		/*
 		 * In this test, "macrophages" have no macrophage properties - they are completely inert,
 		 * with the exception of when a degree of Brownian Motion applies to the entire simulation.
@@ -669,10 +677,10 @@ public:
 		{
 			delete nodes[i];
 		}
-													}
+															}
 
 	void dontTestFinalSimulations() throw(Exception)
-													{
+															{
 
 		/** The next line is needed because we cannot currently run node based simulations in parallel. */
 		EXIT_IF_PARALLEL;
@@ -881,10 +889,10 @@ public:
 			delete nodes[i];
 		}
 
-													}
+															}
 
 	void dontTestFinalSimulationWithLoadedSpheroid() throw(Exception)
-																	{
+																			{
 
 		/** The next line is needed because we cannot currently run node based simulations in parallel. */
 		EXIT_IF_PARALLEL;
@@ -1103,10 +1111,10 @@ public:
 			delete nodes[i];
 		}
 
-																	}
+																			}
 
 	void dontTestAddingMacrophagesWhenTumourReachesSpecifiedSize() throw(Exception)
-													{
+															{
 		/** The next line is needed because we cannot currently run node based simulations in parallel. */
 		EXIT_IF_PARALLEL;
 
@@ -1269,10 +1277,10 @@ public:
 			delete nodes[i];
 		}
 
-													}
+															}
 
-	void TestAddingMacrophagesWhenSimulationReachesSpecifiedTime() throw(Exception)
-													{
+	void dontTestAddingMacrophagesWhenSimulationReachesSpecifiedTime() throw(Exception)
+															{
 
 		/** The next line is needed because we cannot currently run node based simulations in parallel. */
 		EXIT_IF_PARALLEL;
@@ -1289,7 +1297,7 @@ public:
 
 		// Tumour Nodes
 		unsigned nodeNum=0;
-		double initialRadius = 8.0;
+		double initialRadius = 12.0;
 		for (double x=-initialRadius; x<initialRadius+1; x++)
 		{
 			for (double y=-initialRadius; y<initialRadius+1; y++)
@@ -1300,14 +1308,14 @@ public:
 					nodes.push_back(new Node<DIM>(nodeNum,  false,  x, y));
 					nodeNum++;
 				}
-//								for (double z=-initialRadius; z<initialRadius+1; z++)
-//								{
-//									if(pow(x,2) + pow(y,2) + pow(z,2) < pow(initialRadius,2))
-//									{
-//										nodes.push_back(new Node<DIM>(nodeNum,  false,  x, y, z));
-//										nodeNum++;
-//									}
-//								}
+				//								for (double z=-initialRadius; z<initialRadius+1; z++)
+				//								{
+				//									if(pow(x,2) + pow(y,2) + pow(z,2) < pow(initialRadius,2))
+				//									{
+				//										nodes.push_back(new Node<DIM>(nodeNum,  false,  x, y, z));
+				//										nodeNum++;
+				//									}
+				//								}
 			}
 		}
 
@@ -1320,8 +1328,8 @@ public:
 
 		double averageCellCycleLength = 24.0;
 		// Create tumour cells manually
-		double quiescence = 0.75;
-		double hypoxia = 0.5;
+		double quiescence = 0.7;
+		double hypoxia = 0.6;
 		for (unsigned i=0; i<nodeNum; i++)
 		{
 			UniformCellCycleModelWithQuiescence* p_model = new UniformCellCycleModelWithQuiescence;
@@ -1358,12 +1366,14 @@ public:
 		// Write summary statistic files
 		cell_population.AddPopulationWriter<NodeLocationWriter>();
 		cell_population.AddPopulationWriter<NodeVelocityWriter>();
+		cell_population.AddPopulationWriter<BoundaryNodeWriter>();
 		cell_population.AddCellWriter<CellProliferativeTypesWriter>();
 		cell_population.AddCellWriter<CellVolumesWriter>();
+		cell_population.AddCellWriter<BoundaryCellWriter>();
 		//cell_population.AddPopulationWriter<BoundaryNodeWriter>();
 
 		// Make PDE (Oxygen)
-		double consumptionRate = -0.01;//was -0.03
+		double consumptionRate = -0.03;//was -0.03
 		double diffusionCoefficient = 1;
 		MAKE_PTR_ARGS(AveragedSourceEllipticPde<DIM>, p_pde, (cell_population, consumptionRate,diffusionCoefficient));
 		MAKE_PTR_ARGS(ConstBoundaryCondition<DIM>, p_bc, (1.1));
@@ -1388,15 +1398,15 @@ public:
 		OffLatticeSimulation<DIM> simulator(cell_population);
 		simulator.AddSimulationModifier(p_pde_modifier);
 		std::stringstream output_directory;
-		output_directory << "Dorie1982/AddingMacrophages/SteadyStateSimulation_4Apr_SurfaceTension_50Springs";
+		output_directory << "Dorie1982/AddingMacrophages/TestBeadVolumeFix";
 		simulator.SetOutputDirectory(output_directory.str());
 		simulator.SetSamplingTimestepMultiple(120/visualisationOutputFrequencyPerHour);
-		simulator.SetEndTime(300);
+		simulator.SetEndTime(400);
 
 		// Add macrophages at set time
 		MAKE_PTR(AddMacrophagesAtSpecifiedTimeModifier<DIM>, p_addMacs_modifier);
-		p_addMacs_modifier->SetNumberOfMacrophagesToAdd(100);
-		p_addMacs_modifier->SetTimeToAddMacrophages(150);
+		p_addMacs_modifier->SetNumberOfMacrophagesToAdd(50);
+		p_addMacs_modifier->SetTimeToAddMacrophages(75);
 		//p_addMacs_modifier->SetNumberOfHoursToRunSimulationAfterAddingMacrophages(250);
 		simulator.AddSimulationModifier(p_addMacs_modifier);
 
@@ -1409,9 +1419,9 @@ public:
 		p_macStats_modifier->SetOutputDirectory(output_directory.str());
 		simulator.AddSimulationModifier(p_macStats_modifier);
 
-//		// Add periodic boundary conditions for cells
-//		MAKE_PTR_ARGS(CuboidPeriodicBoundaryCondition<DIM>,p_periodic_boundary_condition,(&cell_population,lower,upper));
-//		simulator.AddCellPopulationBoundaryCondition(p_periodic_boundary_condition);
+		//		// Add periodic boundary conditions for cells
+		//		MAKE_PTR_ARGS(CuboidPeriodicBoundaryCondition<DIM>,p_periodic_boundary_condition,(&cell_population,lower,upper));
+		//		simulator.AddCellPopulationBoundaryCondition(p_periodic_boundary_condition);
 
 		// Add Brownian motion for all cells
 		MAKE_PTR(DiffusionForceChooseD<DIM>, p_diffusion_force);
@@ -1425,8 +1435,8 @@ public:
 		//simulator.AddForce(p_force);
 
 		MAKE_PTR(GeneralisedLinearSpringForceDifferentialAdhesionForApoptosisAndMacrophages<DIM>, p_force);
-		p_force->SetMeinekeSpringStiffness(50.0);
-		p_force->SetCutOffLength(3.0);
+		p_force->SetMeinekeSpringStiffness(15.0);
+		p_force->SetCutOffLength(1.5);
 		p_force->SetHeterotypicLabelledSpringConstantMultiplier(1.0);
 		p_force->SetHomotypicLabelledSpringConstantMultiplier(1.0);
 		simulator.AddForce(p_force);
@@ -1436,9 +1446,9 @@ public:
 		MAKE_PTR_ARGS(ApoptoticCellKiller<DIM>, p_apoptosis_killer, (&cell_population));
 		simulator.AddCellKiller(p_apoptosis_killer);
 
-//		MAKE_PTR(ExternalPressureForceOnSurroundingSphere<DIM>, p_pressure);
-//		p_pressure->SetPressure(5);
-//		simulator.AddForce(p_pressure);
+		MAKE_PTR(ExternalPressureForceOnConcaveHull<DIM>, p_pressure);
+		p_pressure->SetPressure(1);
+		simulator.AddForce(p_pressure);
 
 
 		/* To run the simulation, we call {{{Solve()}}}. */
@@ -1452,7 +1462,217 @@ public:
 			delete nodes[i];
 		}
 
-													}
+															}
+
+	void TestAddingMacrophagesWithCSF1() throw(Exception)
+															{
+
+		/** The next line is needed because we cannot currently run node based simulations in parallel. */
+		EXIT_IF_PARALLEL;
+
+		int visualisationOutputFrequencyPerHour = 2;
+		const int DIM = 2;
+
+		// Generate Mesh:
+		// Make Vector
+		std::vector<Node<DIM>*> nodes;
+		// Add some nodes
+
+		double cubeDomainDistanceToBoundary = 50;
+
+		// Tumour Nodes
+		unsigned nodeNum=0;
+		double initialRadius = 6.0;
+		for (double x=-initialRadius; x<initialRadius+1; x++)
+		{
+			for (double y=-initialRadius; y<initialRadius+1; y++)
+			{
+
+				if(pow(x,2) + pow(y,2) < pow(initialRadius,2))
+				{
+					nodes.push_back(new Node<DIM>(nodeNum,  false,  x, y));
+					nodeNum++;
+				}
+				//								for (double z=-initialRadius; z<initialRadius+1; z++)
+				//								{
+				//									if(pow(x,2) + pow(y,2) + pow(z,2) < pow(initialRadius,2))
+				//									{
+				//										nodes.push_back(new Node<DIM>(nodeNum,  false,  x, y, z));
+				//										nodeNum++;
+				//									}
+				//								}
+			}
+		}
+
+
+		// Make cell pointers
+		std::vector<CellPtr> cells;
+		MAKE_PTR(WildTypeCellMutationState, p_state);
+		MAKE_PTR(StemCellProliferativeType, p_stem_type);
+		MAKE_PTR(MacrophageCellProliferativeType, p_macrophage_type);
+
+		double averageCellCycleLength = 16.0;
+		// Create tumour cells manually
+		double quiescence = 0.7;
+		double hypoxia = 0.5;
+		for (unsigned i=0; i<nodeNum; i++)
+		{
+			UniformCellCycleModelWithQuiescence* p_model = new UniformCellCycleModelWithQuiescence;
+			p_model->SetDimension(DIM);
+			p_model->SetMinCellCycleDuration(averageCellCycleLength*0.75);
+			p_model->SetMaxCellCycleDuration(averageCellCycleLength*1.25);
+			p_model->SetHypoxicConcentration(hypoxia);
+			p_model->SetQuiescentConcentration(quiescence);
+			p_model->SetCriticalHypoxicDuration(8);
+
+			CellPtr p_cell(new Cell(p_state, p_model)); // Default cell radius is 0.5
+			p_cell->SetCellProliferativeType(p_stem_type);
+			p_cell->GetCellData()->SetItem("oxygen", 1);
+			p_cell->GetCellData()->SetItem("csf1", 1.0);
+			p_cell->SetApoptosisTime(48); // Apoptosis time in hours - how long before a cell is removed?
+
+			double birthTime = - RandomNumberGenerator::Instance()->ranf() *
+					(averageCellCycleLength*0.75);
+			p_cell->SetBirthTime(birthTime);
+			cells.push_back(p_cell);
+
+		}
+
+
+
+		NodesOnlyMesh<DIM> mesh;
+		// Cut off length: 1.5 cell radii
+		mesh.ConstructNodesWithoutMesh(nodes, 1.5);
+
+
+		// Make cell population (2D)
+		NodeBasedCellPopulation<DIM> cell_population(mesh, cells);
+		cell_population.SetAbsoluteMovementThreshold(DBL_MAX);//Set big movement threshold
+
+		// Write summary statistic files
+		cell_population.AddPopulationWriter<NodeLocationWriter>();
+		cell_population.AddPopulationWriter<NodeVelocityWriter>();
+		cell_population.AddPopulationWriter<BoundaryNodeWriter>();
+		cell_population.AddCellWriter<CellProliferativeTypesWriter>();
+		cell_population.AddCellWriter<CellVolumesWriter>();
+		cell_population.AddCellWriter<BoundaryCellWriter>();
+		//cell_population.AddPopulationWriter<BoundaryNodeWriter>();
+
+		// Make PDE (Oxygen)
+		double consumptionRate = -0.03;//was -0.03
+		double diffusionCoefficient = 1;
+		MAKE_PTR_ARGS(AveragedSourceEllipticPde<DIM>, p_pde, (cell_population, consumptionRate,diffusionCoefficient));
+		MAKE_PTR_ARGS(ConstBoundaryCondition<DIM>, p_bc, (1.0));
+		bool is_neumann_bc = false; // Dirichlet BCs
+
+		// Create a ChasteCuboid on which to base the finite element mesh used to solve the PDE
+		c_vector<double,DIM> centroid = cell_population.GetCentroidOfCellPopulation();
+		ChastePoint<DIM> lower(-cubeDomainDistanceToBoundary, -cubeDomainDistanceToBoundary,-cubeDomainDistanceToBoundary);
+		ChastePoint<DIM> upper(cubeDomainDistanceToBoundary, cubeDomainDistanceToBoundary,cubeDomainDistanceToBoundary);
+		MAKE_PTR_ARGS(ChasteCuboid<DIM>, p_cuboid, (lower, upper));
+
+		// Create a PDE modifier and set the name of the dependent variable in the PDE
+		int updateIntervalForPdeInTimesteps = 120/2;
+		MAKE_PTR_ARGS(EllipticBoxDomainPdeModifierVariableTimestep<DIM>, p_pde_modifier, (p_pde, p_bc, is_neumann_bc, p_cuboid, 1.0));
+		p_pde_modifier->SetTimestepInterval(updateIntervalForPdeInTimesteps);
+		p_pde_modifier->SetDependentVariableName("oxygen");
+		p_pde_modifier->SetBcsOnBoxBoundary(false); //was false
+
+
+
+		// Make PDE (CSF1)
+		// Assume CSF1 diffuses 4 times slower than o2
+		MAKE_PTR_ARGS(AveragedSourceEllipticPdeOxygenBelowThreshold<DIM>, p_pdeCSF, (cell_population, 0.01,0.25,hypoxia));
+		MAKE_PTR_ARGS(ConstBoundaryCondition<DIM>, p_bcCSF, (0.0));
+
+		bool is_neumann_bcCSF = false; // Dirichlet BCs
+		// Create a ChasteCuboid on which to base the finite element mesh used to solve the PDE
+		MAKE_PTR_ARGS(ChasteCuboid<DIM>, p_cuboidCSF, (lower, upper));
+		MAKE_PTR_ARGS(EllipticBoxDomainPdeModifier<DIM>, p_pde_modifierCSF, (p_pdeCSF, p_bcCSF, is_neumann_bcCSF, p_cuboidCSF, 1.0));
+		p_pde_modifierCSF->SetDependentVariableName("csf1");
+		p_pde_modifierCSF->SetOutputGradient(true);
+		p_pde_modifierCSF->SetBcsOnBoxBoundary(true); //was false
+
+
+		/* We then pass in the cell population into an {{{OffLatticeSimulation}}},
+		 * (this time with dimension 3) and set the output directory, output multiple and end time. */
+		OffLatticeSimulation<DIM> simulator(cell_population);
+		simulator.AddSimulationModifier(p_pde_modifier);
+
+		simulator.AddSimulationModifier(p_pde_modifierCSF);
+
+		std::stringstream output_directory;
+		output_directory << "Dorie1982/AddingMacrophages/TestCSF1_HypoxicOnly";
+		simulator.SetOutputDirectory(output_directory.str());
+		simulator.SetSamplingTimestepMultiple(120/visualisationOutputFrequencyPerHour);
+		simulator.SetEndTime(400);
+
+		// Add macrophages at set time
+		MAKE_PTR(AddMacrophagesAtSpecifiedTimeModifier<DIM>, p_addMacs_modifier);
+		p_addMacs_modifier->SetNumberOfMacrophagesToAdd(50);
+		p_addMacs_modifier->SetTimeToAddMacrophages(100);
+		//p_addMacs_modifier->SetNumberOfHoursToRunSimulationAfterAddingMacrophages(250);
+		simulator.AddSimulationModifier(p_addMacs_modifier);
+
+
+		// Create an output modifier - set SamplingTimestepMultiple below to UINT_MAX
+		MAKE_PTR(OutputOnlyMacrophageSummaryStatisticsModifierWithCSF1<DIM>, p_macStats_modifier);
+		p_macStats_modifier->SetQuiescenceLevel(quiescence);
+		p_macStats_modifier->SetHypoxiaLevel(hypoxia);
+		p_macStats_modifier->SetOutputFrequencyInHours(0.5); // Every 30 minutes
+		p_macStats_modifier->SetOutputDirectory(output_directory.str());
+		simulator.AddSimulationModifier(p_macStats_modifier);
+
+		//		// Add periodic boundary conditions for cells
+		//		MAKE_PTR_ARGS(CuboidPeriodicBoundaryCondition<DIM>,p_periodic_boundary_condition,(&cell_population,lower,upper));
+		//		simulator.AddCellPopulationBoundaryCondition(p_periodic_boundary_condition);
+
+		// Add Brownian motion for all cells
+		MAKE_PTR(DiffusionForceChooseD<DIM>, p_diffusion_force);
+		p_diffusion_force->SetDiffusionScalingConstant(0.01);
+		simulator.AddForce(p_diffusion_force);
+
+		// Add Chemotaxis
+		MAKE_PTR(ChemotacticForceCSF1<DIM>, p_chemotactic_force);
+		simulator.AddForce(p_chemotactic_force);
+
+		/* Again we create a force law (this time with dimension 3), and pass it to the {{{OffLatticeSimulation}}}.*/
+		//MAKE_PTR(GeneralisedLinearSpringForce<DIM>, p_force);
+		//p_force->SetMeinekeSpringStiffness(5.0);
+		//p_force->SetCutOffLength(1.5);
+		//simulator.AddForce(p_force);
+
+		MAKE_PTR(GeneralisedLinearSpringForceDifferentialAdhesionForApoptosisAndMacrophages<DIM>, p_force);
+		p_force->SetMeinekeSpringStiffness(15.0);
+		p_force->SetCutOffLength(1.5);
+		p_force->SetHeterotypicLabelledSpringConstantMultiplier(1.0);
+		p_force->SetHomotypicLabelledSpringConstantMultiplier(1.0);
+		simulator.AddForce(p_force);
+
+
+		// Killer which removes apoptotic cells
+		MAKE_PTR_ARGS(ApoptoticCellKiller<DIM>, p_apoptosis_killer, (&cell_population));
+		simulator.AddCellKiller(p_apoptosis_killer);
+
+		MAKE_PTR(ExternalPressureForceOnConcaveHull<DIM>, p_pressure);
+		p_pressure->SetPressure(5);
+		simulator.AddForce(p_pressure);
+
+
+		/* To run the simulation, we call {{{Solve()}}}. */
+
+		simulator.Solve();
+
+
+		CellBasedSimulationArchiver<DIM, OffLatticeSimulation<DIM> >::Save(&simulator);
+
+		/* To avoid memory leaks, we conclude by deleting any pointers that we created in the test.*/
+		for (unsigned i=0; i<nodes.size(); i++)
+		{
+			delete nodes[i];
+		}
+
+															}
 
 };
 

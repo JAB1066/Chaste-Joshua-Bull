@@ -6,10 +6,10 @@ import time
 
 import numpy as np
 
-executable = '/mi/share/scratch/bull/ChasteStuff/chaste-release/projects/JoshuaBull/apps/Exe_ParallelDorieReproduction_Microspheres'
+executable = '/mi/share/scratch/bull/ChasteStuff/chaste-release/projects/JoshuaBull/apps/Exe_ParallelDorieReproduction_LabelledCells'
 
 chaste_test_dir = os.environ.get('CHASTE_TEST_OUTPUT')
-path_to_output = os.path.join(chaste_test_dir,'ParameterSweeps','DorieReproduction','Microspheres','Jun_21')
+path_to_output = os.path.join(chaste_test_dir,'ParameterSweeps','DorieReproduction','LabelledCells','Jun_11')
 
 if not(os.path.isfile(executable)):
     raise Exception('Could not find executable: ' + executable)
@@ -20,24 +20,17 @@ params_list = ['simulation_id', 'averageCellCycleLength', 'hypoxicConcentration'
 today = time.strftime('%Y-%m-%dT%H%M')
 
 # Param ranges (in lists, for itertools product)
-#accl = np.linspace(16, 32, num=2)
-#hc = np.linspace(0.1, 0.7, num=4)
-#qc = np.linspace(0.3, 0.7, num=3)
-#chd = np.linspace(8.0, 16.0, num=2)
-#ad = np.linspace(48.0, 48.0, num=1)
-#ocr = np.linspace(0.03, 0.03, num=1)
-#it = np.linspace(1, 10, num=10)
-accl = np.linspace(8, 32, num=7)
-hc = np.linspace(0.3, 0.3, num=1)
-qc = np.linspace(0.3, 0.7, num=5)
-chd = np.linspace(8.0, 8.0, num=1)
+accl = np.linspace(8, 24, num=2)
+hc = np.linspace(0.1, 0.7, num=4)
+qc = np.linspace(0.3, 0.7, num=3)
+chd = np.linspace(8.0, 16.0, num=2)
 ad = np.linspace(48.0, 48.0, num=1)
 ocr = np.linspace(0.03, 0.03, num=1)
-it = np.linspace(1, 10, num=10)
+it = np.linspace(21, 30, num=10)
 
 
 combined_iterable = enumerate(itertools.product(accl,hc,qc,chd,ad,ocr,it))
-shift = 480*11 # For running large param sweeps, specify an offset if needed
+shift = 480*5 # For running large param sweeps, specify an offset if needed
 
 def main():
     run_simulations()
